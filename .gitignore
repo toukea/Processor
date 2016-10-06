@@ -1,0 +1,14 @@
+build/
+gen
+gen/
+bin
+bin/
+bin/*
+/bin
+/bin/
+/bin/*
+.classpath
+.project
+project.properties
+proguard-project.txt
+

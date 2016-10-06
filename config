@@ -1,0 +1,18 @@
+[core]
+	bare = false
+	filemode = false
+	symlinks = false
+	ignorecase = true
+	logallrefupdates = true
+[core]
+	repositoryformatversion = 0
+[user]
+	email = ttjsoftz@gmail.com
+[credential]
+	helper = store
+[credential "https://github.com/toukea/"]
+	username = ttjsoftz@gmail.com
+
+[remote "origin"]
+	url = https://github.com/toukea/Processor.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
