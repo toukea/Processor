@@ -39,11 +39,11 @@ public abstract class Process {
         this.result = result;
     }
 
-    public String getId() {
+    public final String getId() {
         return id;
     }
 
-    void setId(String id) {
+    final void setId(String id) {
         this.id = id;
     }
 
