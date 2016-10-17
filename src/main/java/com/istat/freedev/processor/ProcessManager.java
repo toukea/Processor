@@ -1,5 +1,8 @@
 package com.istat.freedev.processor;
 
+import com.istat.freedev.processor.interfaces.ProcessListener;
+
+import java.util.Enumeration;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -10,12 +13,31 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public final class ProcessManager {
 
-    final static ConcurrentHashMap<String, Process> processQueue = new ConcurrentHashMap<>();
+    final static ConcurrentHashMap<String, Process> processQueue = new ConcurrentHashMap<String, Process>();
     final static ConcurrentLinkedQueue<ProcessListener> processListeners = new ConcurrentLinkedQueue();
+    private static final int SIZE_GENERATED_PID = 16;
 
     public final Process execute(Process process, Object... vars) {
         process.execute(vars);
+        notifyProcessStarted(process, vars);
         return process;
+    }
+
+    public final Process execute(Process process, String PID, Object... vars) throws ProcessException {
+        if (isRunningPID(PID)) {
+            throw new ProcessException("Sorry, a running process with same PID alrady running");
+        }
+        process.setId(PID);
+        return execute(process, vars);
+    }
+
+    public int cancelAll() {
+        int livingProcess = processQueue.size();
+        Enumeration<Process> enumProcess = processQueue.elements();
+        while (enumProcess.hasMoreElements()) {
+            enumProcess.nextElement().cancel();
+        }
+        return livingProcess;
     }
 
     ProcessManager() {
@@ -24,6 +46,10 @@ public final class ProcessManager {
 
     public Process getProcessById(String PID) {
         return processQueue.get(PID);
+    }
+
+    public boolean isRunningPID(String PID) {
+        return processQueue.contains(PID);
     }
 
     public boolean cancelProcess(String PID) {
@@ -67,7 +93,7 @@ public final class ProcessManager {
     private String generateProcessId() {
         Random random = new Random();
         String id = "";
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < SIZE_GENERATED_PID; i++) {
             int index = random
                     .nextInt(ID_PROPOSITION_CHAR.length - 1);
             id += ID_PROPOSITION_CHAR[index];
@@ -75,23 +101,32 @@ public final class ProcessManager {
         return id;
     }
 
-    private void notifyProcessStarted(Process process, Object[] vars) {
-        String id = System.currentTimeMillis() + "";
-        while (getProcessById(id) != null) {
-            id = generateProcessId();
-        }
-        process.setId(id);
-        for (ProcessListener listener : processListeners) {
-            Object result = null;
-            if (process != null) {
-                result = process.getResult();
+    private void notifyProcessStarted(final Process process, Object[] vars) {
+        String id;
+        if (!process.hasId()) {
+            id = System.currentTimeMillis() + "";
+            while (isRunningPID(id)) {
+                id = generateProcessId();
             }
-            listener.onProcessCompleted(process, id, result);
+            process.setId(id);
+        } else {
+            id = process.getId();
         }
+        processQueue.put(id, process);
+        for (ProcessListener listener : processListeners) {
+            listener.onProcessCompleted(process, id);
+        }
+        process.runWhen(new Runnable() {
+            @Override
+            public void run() {
+                notifyProcessCompleted(process);
+            }
+        }, Process.WHEN_ANYWAY);
     }
 
 
     private void notifyProcessCompleted(Process process) {
+        processQueue.remove(process.getId());
         for (ProcessListener listener : processListeners) {
             String processId = "";
             Object result = null;
@@ -99,14 +134,8 @@ public final class ProcessManager {
                 processId = process.getId();
                 result = process.getResult();
             }
-            listener.onProcessCompleted(process, processId, result);
+            listener.onProcessCompleted(process, processId);
         }
-    }
-
-    public static interface ProcessListener {
-        public void onProcessStarted(Process process, String id);
-
-        public void onProcessCompleted(Process process, String id, Object result);
     }
 
     public final static class ProcessException extends IllegalAccessException {

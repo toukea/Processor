@@ -7,7 +7,7 @@
 [core]
 	repositoryformatversion = 0
 [user]
-	email = ttjsoftz@gmail.com
+	emailAccount = ttjsoftz@gmail.com
 [credential]
 	helper = store
 [credential "https://github.com/toukea/"]
