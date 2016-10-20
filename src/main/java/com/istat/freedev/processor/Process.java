@@ -17,12 +17,14 @@ public abstract class Process {
     String id;
     ProcessExecutionListener executionListener;
     ProcessExecutionListener mListener;
+    private long startingTime = -1, completionTime = -1;
 
     public void setExecutionListener(ProcessExecutionListener executionListener) {
         this.executionListener = executionListener;
     }
 
     void execute(Object... vars) {
+        startingTime = System.currentTimeMillis();
         onExecute(vars);
     }
 
@@ -93,14 +95,12 @@ public abstract class Process {
     }
 
     public final boolean compromiseWhen(int... when) {
-        // TODO make something god here
         boolean cancelled = cancel();
 
         return cancelled;
     }
 
     public final boolean compromise() {
-        // TODO make something god here
         boolean cancelled = cancel();
 
         return cancelled;
@@ -173,6 +173,27 @@ public abstract class Process {
 
         }
 
+    }
+
+    public final long getStartingTime() throws ProcessManager.ProcessException {
+        if (startingTime < 0) {
+            throw new ProcessManager.ProcessException("Oups, it seem than this process is not yet started.");
+        }
+        return startingTime;
+    }
+
+    public final long getCompletionTime() throws ProcessManager.ProcessException {
+        if (completionTime < 0) {
+            throw new ProcessManager.ProcessException("Oups, it seem than this process is not yet completed.");
+        }
+        return completionTime;
+    }
+
+    public final long getLinvingTime() {
+        if (startingTime < 0) {
+            return 0;
+        }
+        return System.currentTimeMillis() - startingTime;
     }
 
     protected final void notifyProcessCompleted() {
