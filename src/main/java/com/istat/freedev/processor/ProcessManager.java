@@ -31,6 +31,11 @@ public final class ProcessManager {
         return execute(process, vars);
     }
 
+    /**
+     * Cancell all running process.
+     *
+     * @return
+     */
     public int cancelAll() {
         int livingProcess = processQueue.size();
         Enumeration<Process> enumProcess = processQueue.elements();
@@ -44,10 +49,22 @@ public final class ProcessManager {
 
     }
 
+    /**
+     * Opt a process started by the processManager and which is always running using his PID.
+     *
+     * @param PID
+     * @return
+     */
     public Process getProcessById(String PID) {
         return processQueue.get(PID);
     }
 
+    /**
+     * Determinate if Process is currently running.
+     *
+     * @param PID
+     * @return
+     */
     public boolean isRunningPID(String PID) {
         return processQueue.contains(PID);
     }
