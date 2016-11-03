@@ -1,37 +1,77 @@
 package com.istat.freedev.processor;
 
-import android.content.Context;
+import java.util.Iterator;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by istat on 04/10/16.
  */
 
-public class Processor {
-    final static ProcessManager mProcessManager = new ProcessManager();
+public final class Processor {
+    public final static String DEFAULT_PROCESSOR_TAG = "com.istat.android.processManager.DEFAULT";
+    final static ConcurrentHashMap<String, Processor> processorQueue = new ConcurrentHashMap<String, Processor>() {
+        {
+            put(DEFAULT_PROCESSOR_TAG, new Processor());
+        }
+    };
+    final static ProcessManager defaultProcessManager = new ProcessManager();
+    final ProcessManager processManager = new ProcessManager();
 
     public final static ProcessManager getDefaultProcessManager() {
-        return mProcessManager;
+        return defaultProcessManager;
     }
 
-    public static Processor getDefault() {
-        return null;
+    public final static Processor getDefault() {
+        return processorQueue.get(DEFAULT_PROCESSOR_TAG);
     }
 
     public final static Processor from(String processorTag) {
-        return null;
+        if (processorQueue.contains(processorTag)) {
+            return processorQueue.get(processorTag);
+        }
+        Processor processor = new Processor();
+        processorQueue.put(processorTag, processor);
+        return processor;
     }
 
-    public Process execute(Process process, Object... vars) {
-        return null;
+    public final Process execute(Process process, Object... vars) {
+        return getProcessManager().execute(process, vars);
     }
 
-    public Process execute(Process process, String PID, Object... vars) {
-        return null;
+    public final Process execute(Process process, String PID, Object... vars) throws ProcessManager.ProcessException {
+        return getProcessManager().execute(process, PID, vars);
     }
 
-    public int cancel() {
-        return 0;
+    public int shutDown() {
+        int runningProcess = getProcessManager().getRunningProcessCount();
+        getProcessManager().cancelAll();
+        return runningProcess;
     }
 
+    public ProcessManager getProcessManager() {
+        return processManager;
+    }
 
+    public final static int count() {
+        return processorQueue.size();
+    }
+
+    public final int getProcessCount() {
+        return getProcessManager().getRunningProcessCount();
+    }
+
+    public final boolean hasWork() {
+        return getProcessCount() > 0;
+    }
+
+    public final static int shutDownAll() {
+        Iterator<String> iterator = processorQueue.keySet().iterator();
+        int count = 0;
+        while (iterator.hasNext()) {
+            String name = iterator.next();
+            processorQueue.get(name).shutDown();
+            count++;
+        }
+        return count;
+    }
 }
