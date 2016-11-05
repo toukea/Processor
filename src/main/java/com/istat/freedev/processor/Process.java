@@ -18,12 +18,14 @@ public abstract class Process {
     ProcessExecutionListener executionListener;
     ProcessExecutionListener mListener;
     private long startingTime = -1, completionTime = -1;
+    protected Object[] executionVariables = new Object[0];
 
     public void setExecutionListener(ProcessExecutionListener executionListener) {
         this.executionListener = executionListener;
     }
 
     void execute(Object... vars) {
+        this.executionVariables = vars;
         startingTime = System.currentTimeMillis();
         onExecute(vars);
     }
@@ -37,8 +39,6 @@ public abstract class Process {
     protected abstract void onStopped();
 
     protected abstract void onCancel();
-
-    protected abstract void onRestart();
 
     public abstract boolean isRunning();
 
@@ -79,7 +79,8 @@ public abstract class Process {
     }
 
     public final void restart() {
-        onRestart();
+        cancel();
+        execute(this.executionVariables);
     }
 
     public final void stop() {
