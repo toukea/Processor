@@ -12,17 +12,33 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 
 public final class ProcessManager {
-
-    final static ConcurrentHashMap<String, Process> processQueue = new ConcurrentHashMap<String, Process>();
-    final static ConcurrentLinkedQueue<ProcessListener> processListeners = new ConcurrentLinkedQueue();
+    static final ConcurrentHashMap<String, Process> globalProcessQueue = new ConcurrentHashMap<String, Process>();
+    final ConcurrentHashMap<String, Process> processQueue = new ConcurrentHashMap<String, Process>();
+    final ConcurrentLinkedQueue<ProcessListener> processListeners = new ConcurrentLinkedQueue();
     private static final int SIZE_GENERATED_PID = 16;
 
+    /**
+     * Execute process with specific execution variables
+     *
+     * @param process
+     * @param vars
+     * @return
+     */
     public final Process execute(Process process, Object... vars) {
         process.execute(vars);
         notifyProcessStarted(process, vars);
         return process;
     }
 
+    /**
+     * Execute process with specific execution variables and id.
+     *
+     * @param process
+     * @param PID
+     * @param vars
+     * @return
+     * @throws ProcessException if given id is already used inside the processManager
+     */
     public final Process execute(Process process, String PID, Object... vars) throws ProcessException {
         if (isRunningPID(PID)) {
             throw new ProcessException("Sorry, a running process with same PID alrady running");
@@ -57,6 +73,36 @@ public final class ProcessManager {
      */
     public Process getProcessById(String PID) {
         return processQueue.get(PID);
+    }
+
+    /**
+     * Determine si un esemble de processus est en cours d'execution a partir de leurs IDs.
+     *
+     * @param PID
+     * @return
+     */
+    public boolean isRunning(String... PID) {
+        for (String pid : PID) {
+            if (getProcessById(pid) == null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Determine si au mois un des  processus est en cours d'execution a partir de leurs IDs.
+     *
+     * @param PID
+     * @return
+     */
+    public boolean isLeastOneRunning(String... PID) {
+        for (String pid : PID) {
+            if (getProcessById(pid) != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -129,6 +175,7 @@ public final class ProcessManager {
         } else {
             id = process.getId();
         }
+        globalProcessQueue.put(id, process);
         processQueue.put(id, process);
         for (ProcessListener listener : processListeners) {
             listener.onProcessCompleted(process, id);
@@ -143,6 +190,7 @@ public final class ProcessManager {
 
 
     private void notifyProcessCompleted(Process process) {
+        globalProcessQueue.remove(process.getId());
         processQueue.remove(process.getId());
         for (ProcessListener listener : processListeners) {
             String processId = "";
@@ -153,6 +201,14 @@ public final class ProcessManager {
             }
             listener.onProcessCompleted(process, processId);
         }
+    }
+
+    public final int getRunningProcessCount() {
+        return processQueue.size();
+    }
+
+    public final static int gertGlobalRunningProcessCount() {
+        return globalProcessQueue.size();
     }
 
     public final static class ProcessException extends IllegalAccessException {
