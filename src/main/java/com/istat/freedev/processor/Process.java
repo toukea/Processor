@@ -12,6 +12,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 
 public abstract class Process {
+    public final static int FLAG_SYS_DEFAUlT = 0;
+    public final static int FLAG_SYS_CANCELABLE = 1;
+    public final static int FLAG_USER_CANCELABLE = 1;
+    public final static int FLAG_BACKGROUND = 2;
+    public final static int FLAG_DETACHED = 3;
+    int flag;
     public final static int WHEN_SUCCESS = 0, WHEN_ERROR = 1, WHEN_FAIL = 2, WHEN_ANYWAY = 3, WHEN_ABORTED = 4;
     Object result;
     String id;
@@ -19,6 +25,11 @@ public abstract class Process {
     ProcessExecutionListener mListener;
     private long startingTime = -1, completionTime = -1;
     protected Object[] executionVariables = new Object[0];
+
+
+    public void setFlag(int flag) {
+        this.flag = flag;
+    }
 
     public void setExecutionListener(ProcessExecutionListener executionListener) {
         this.executionListener = executionListener;
