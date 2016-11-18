@@ -3,8 +3,9 @@ package com.istat.freedev.processor;
 import android.text.TextUtils;
 
 import com.istat.freedev.processor.interfaces.ProcessExecutionListener;
-import com.istat.freedev.processor.tools.Toolkit;
+import com.istat.freedev.processor.tools.ProcessTools;
 
+import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -24,7 +25,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     Error error;
     Exception exception;
     String id;
-    ProcessExecutionListener executionListener;
+    final ConcurrentLinkedQueue<ProcessExecutionListener<Result, Error>> executionListeners = new ConcurrentLinkedQueue<ProcessExecutionListener<Result, Error>>();
     private long startingTime = -1, completionTime = -1;
     protected Object[] executionVariables = new Object[0];
 
@@ -33,8 +34,8 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         this.flag = flag;
     }
 
-    protected void setExecutionListener(ProcessExecutionListener<Result, Error> executionListener) {
-        this.executionListener = executionListener;
+    protected void addExecutionListener(ProcessExecutionListener<Result, Error> executionListener) {
+        this.executionListeners.add(executionListener);
     }
 
     void execute(Object... vars) {
@@ -216,7 +217,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     }
 
     protected final void notifyProcessCompleted(boolean state) {
-        if (executionListener != null) {
+        for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
             executionListener.onCompleted(this, state);
         }
         executedRunnable.clear();
@@ -226,7 +227,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
 
     protected final void notifyProcessSuccess(Result result) {
         notifyProcessCompleted(true);
-        if (executionListener != null) {
+        for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
             executionListener.onSuccess(this, result);
         }
         ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_SUCCESS);
@@ -234,9 +235,9 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     }
 
 
-    protected final void notifyProcessError(ProcessError error) {
+    protected final void notifyProcessError(Error error) {
         notifyProcessCompleted(false);
-        if (executionListener != null) {
+        for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
             executionListener.onError(this, error);
         }
         ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ERROR);
@@ -245,7 +246,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
 
     protected final void notifyProcessFailed(Exception e) {
         notifyProcessCompleted(false);
-        if (executionListener != null) {
+        for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
             executionListener.onFail(this, e);
         }
         ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_FAIL);
@@ -254,7 +255,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
 
 
     protected final void notifyProcessAborted() {
-        if (executionListener != null) {
+        for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
             executionListener.onAborted(this);
         }
         ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ABORTED);
@@ -274,7 +275,43 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     }
 
     public void attach(ProcessExecutionListener<Result, Error> listener) {
-        Toolkit.attachAsProcessWhen(this, listener);
+        ProcessTools.attachToProcessCycle(this, listener);
+    }
+
+    public int removeAllExecutionListener() {
+        int listenerCount = executionListeners.size();
+        executionListeners.clear();
+        return listenerCount;
+    }
+
+    public boolean removeExecutionListener(ProcessExecutionListener listener) {
+        boolean removed = executionListeners.contains(listener);
+        if (removed) {
+            executionListeners.remove(listener);
+        }
+        return removed;
+    }
+
+    public boolean cancelWhen(Runnable runnable) {
+        Iterator<Integer> iterator = runnableTask.keySet().iterator();
+        while (iterator.hasNext()) {
+            Integer when = iterator.next();
+            ConcurrentLinkedQueue<Runnable> runnables = runnableTask.get(when);
+            if (runnables != null) {
+                boolean removed = runnables.contains(runnable);
+                if (removed) {
+                    runnables.remove(runnable);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean cancelWhen(int When) {
+        boolean removed = runnableTask.contains(When);
+        runnableTask.remove(When);
+        return removed;
     }
 
 

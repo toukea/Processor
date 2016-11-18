@@ -7,8 +7,8 @@ import com.istat.freedev.processor.interfaces.ProcessExecutionListener;
  * Created by istat on 18/11/16.
  */
 
-public class Toolkit {
-    public static <T, Y extends Process.ProcessError> void attachAsProcessWhen(final Process<T, Y> process, final ProcessExecutionListener<T, Y> listener) {
+public class ProcessTools {
+    public static <T, Y extends Process.ProcessError> void attachToProcessCycle(final Process<T, Y> process, final ProcessExecutionListener<T, Y> listener) {
         Runnable complete = new Runnable() {
             @Override
             public void run() {
