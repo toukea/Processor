@@ -6,10 +6,12 @@ import com.istat.freedev.processor.Process;
  * Created by istat on 14/10/16.
  */
 
-public interface ProcessExecutionListener {
-    public void onSucceed(Process process);
+public interface ProcessExecutionListener<Result, Error extends Process.ProcessError> {
+    public void onCompleted(Process process, boolean success);
 
-    public void onError(Process process);
+    public void onSuccess(Process process, Result result);
+
+    public void onError(Process process, Error error);
 
     public void onFail(Process process, Exception e);
 

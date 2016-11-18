@@ -2,7 +2,10 @@ package com.istat.freedev.processor;
 
 import com.istat.freedev.processor.interfaces.ProcessListener;
 
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -28,6 +31,31 @@ public final class ProcessManager {
         process.execute(vars);
         notifyProcessStarted(process, vars);
         return process;
+    }
+
+    /**
+     * Obtenir tout les process de drive encore en vie.
+     *
+     * @return
+     */
+    public List<Process> getRunningRProcess() {
+        Iterator<String> iterator = processQueue.keySet().iterator();
+        List<Process> list = new ArrayList<Process>();
+        while (iterator.hasNext()) {
+            String id = iterator.next();
+            Process process = getProcessById(id);
+            list.add(process);
+        }
+        return list;
+    }
+
+    /**
+     * whether or not current processManager has running process.
+     *
+     * @return
+     */
+    public boolean hasRunningProcess() {
+        return processQueue.size() > 0;
     }
 
     /**
@@ -72,7 +100,15 @@ public final class ProcessManager {
      * @return
      */
     public Process getProcessById(String PID) {
-        return processQueue.get(PID);
+        Process process = processQueue.get(PID);
+        if (process != null) {
+            if (process.isRunning()) {
+                return process;
+            } else {
+                processQueue.remove(process.getId());
+            }
+        }
+        return null;
     }
 
     /**
@@ -112,7 +148,7 @@ public final class ProcessManager {
      * @return
      */
     public boolean isRunningPID(String PID) {
-        return processQueue.contains(PID);
+        return getProcessById(PID) != null;
     }
 
     public boolean cancelProcess(String PID) {
@@ -123,6 +159,58 @@ public final class ProcessManager {
         }
         return out;
 
+    }
+
+    /**
+     * cancel one or more process.
+     *
+     * @param ids
+     * @return number of canceled process.
+     */
+    public int cancel(String... ids) {
+        int count = 0;
+        for (String id : ids) {
+            try {
+                cancelProcess(id);
+                count++;
+            } catch (Exception e) {
+
+            }
+        }
+        return count;
+
+    }
+
+    /**
+     * Permet de modifier le PID d'un process qui est cours de fonctionnement.
+     *
+     * @param PID
+     * @param process
+     * @throws ProcessException lancé si le process n'est plus en cours de fonctionnement ou si son id ne peut être modifier pour le moment.
+     */
+    public void setProcessId(String PID, Process process) throws ProcessException {
+        switchProcessId(process.getId(), PID);
+    }
+
+    /**
+     * switch a Running Process id, from an older to a new PID.
+     *
+     * @param initialPID initial running process ID
+     * @param updatePID  new Process ID to set.
+     * @return
+     * @throws ProcessException
+     */
+    public Process switchProcessId(String initialPID, String updatePID) throws ProcessException {
+        if (!processQueue.containsKey(initialPID)) {
+            throw new ProcessException("Oups, not running process associated to id=" + initialPID + " processManager can't switch id with new PID= " + updatePID);
+        }
+        if (processQueue.containsKey(updatePID)) {
+            throw new ProcessException("Oups, ConcurrentProcessId a running process is alrady associated to this id=" + updatePID + ". ");
+        }
+        Process process = processQueue.get(initialPID);
+        process.setId(updatePID);
+        processQueue.put(updatePID, process);
+        return process;
     }
 
     /**
@@ -194,10 +282,8 @@ public final class ProcessManager {
         processQueue.remove(process.getId());
         for (ProcessListener listener : processListeners) {
             String processId = "";
-            Object result = null;
             if (process != null) {
                 processId = process.getId();
-                result = process.getResult();
             }
             listener.onProcessCompleted(process, processId);
         }
@@ -211,9 +297,13 @@ public final class ProcessManager {
         return globalProcessQueue.size();
     }
 
-    public final static class ProcessException extends IllegalAccessException {
+    public static class ProcessException extends Exception {
         public ProcessException(String message) {
             super(message);
+        }
+
+        public ProcessException(Throwable e) {
+            super(e);
         }
     }
 }
