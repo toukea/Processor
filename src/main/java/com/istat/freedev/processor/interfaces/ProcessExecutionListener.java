@@ -7,6 +7,8 @@ import com.istat.freedev.processor.Process;
  */
 
 public interface ProcessExecutionListener<Result, Error extends Process.ProcessError> {
+    public void onStart(Process process);
+
     public void onCompleted(Process process, boolean success);
 
     public void onSuccess(Process process, Result result);

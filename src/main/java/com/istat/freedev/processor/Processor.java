@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 
 public final class Processor {
-    public final static String DEFAULT_PROCESSOR_TAG = "com.istat.android.processManager.DEFAULT";
+    public final static String DEFAULT_PROCESSOR_TAG = "com.istat.freedev.processor.DEFAULT";
     final static ConcurrentHashMap<String, Processor> processorQueue = new ConcurrentHashMap<String, Processor>() {
         {
             put(DEFAULT_PROCESSOR_TAG, new Processor());
@@ -43,6 +43,12 @@ public final class Processor {
     }
 
     public int shutDown() {
+        int runningProcess = release();
+        processorQueue.remove(this);
+        return runningProcess;
+    }
+
+    public int release() {
         int runningProcess = getProcessManager().getRunningProcessCount();
         getProcessManager().cancelAll();
         return runningProcess;
@@ -70,6 +76,18 @@ public final class Processor {
         while (iterator.hasNext()) {
             String name = iterator.next();
             processorQueue.get(name).shutDown();
+            count++;
+        }
+        processorQueue.put(DEFAULT_PROCESSOR_TAG, new Processor());
+        return count;
+    }
+
+    public final static int releaseAll() {
+        Iterator<String> iterator = processorQueue.keySet().iterator();
+        int count = 0;
+        while (iterator.hasNext()) {
+            String name = iterator.next();
+            processorQueue.get(name).release();
             count++;
         }
         return count;

@@ -1,5 +1,7 @@
 package com.istat.freedev.processor;
 
+import android.text.TextUtils;
+
 import com.istat.freedev.processor.interfaces.ProcessListener;
 
 import java.util.ArrayList;
@@ -28,6 +30,14 @@ public final class ProcessManager {
      * @return
      */
     public final Process execute(Process process, Object... vars) {
+        String id;
+        if (!process.hasId()) {
+            id = System.currentTimeMillis() + "";
+            while (isRunningPID(id)) {
+                id = generateProcessId();
+            }
+            process.setId(id);
+        }
         process.execute(vars);
         notifyProcessStarted(process, vars);
         return process;
@@ -158,7 +168,6 @@ public final class ProcessManager {
             out = process.cancel();
         }
         return out;
-
     }
 
     /**
@@ -201,6 +210,12 @@ public final class ProcessManager {
      * @throws ProcessException
      */
     public Process switchProcessId(String initialPID, String updatePID) throws ProcessException {
+        if (TextUtils.isEmpty(initialPID)) {
+            throw new ProcessException("Oups, you looking for a Process with PID=NULL, can't exist one.");
+        }
+        if (TextUtils.isEmpty(initialPID)) {
+            throw new ProcessException("Oups, you atempt to set a NULL value for  Process with ID=" + initialPID);
+        }
         if (!processQueue.containsKey(initialPID)) {
             throw new ProcessException("Oups, not running process associated to id=" + initialPID + " processManager can't switch id with new PID= " + updatePID);
         }
@@ -253,16 +268,7 @@ public final class ProcessManager {
     }
 
     private void notifyProcessStarted(final Process process, Object[] vars) {
-        String id;
-        if (!process.hasId()) {
-            id = System.currentTimeMillis() + "";
-            while (isRunningPID(id)) {
-                id = generateProcessId();
-            }
-            process.setId(id);
-        } else {
-            id = process.getId();
-        }
+        String id = process.getId();
         globalProcessQueue.put(id, process);
         processQueue.put(id, process);
         for (ProcessListener listener : processListeners) {

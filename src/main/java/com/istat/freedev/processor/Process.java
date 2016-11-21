@@ -5,7 +5,9 @@ import android.text.TextUtils;
 import com.istat.freedev.processor.interfaces.ProcessExecutionListener;
 import com.istat.freedev.processor.tools.ProcessTools;
 
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -20,7 +22,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     public final static int FLAG_BACKGROUND = 2;
     public final static int FLAG_DETACHED = 3;
     int flag;
-    public final static int WHEN_SUCCESS = 0, WHEN_ERROR = 1, WHEN_FAIL = 2, WHEN_ANYWAY = 3, WHEN_ABORTED = 4;
+    public final static int WHEN_SUCCESS = 0, WHEN_ERROR = 1, WHEN_FAIL = 2, WHEN_ANYWAY = 3, WHEN_ABORTED = 4, WHEN_STARTED = 5;
     Result result;
     Error error;
     Exception exception;
@@ -38,10 +40,21 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         this.executionListeners.add(executionListener);
     }
 
+    public Object[] getExecutionVariables() {
+        return executionVariables;
+    }
+
     void execute(Object... vars) {
-        this.executionVariables = vars;
-        startingTime = System.currentTimeMillis();
-        onExecute(vars);
+        geopardise = false;
+        try {
+            this.executionVariables = vars;
+            startingTime = System.currentTimeMillis();
+            onExecute(vars);
+            notifyProcessStarted();
+        } catch (Exception e) {
+            notifyProcessStarted();
+            notifyProcessFailed(e);
+        }
     }
 
     protected abstract void onExecute(Object... vars);
@@ -59,6 +72,9 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     public abstract boolean isCompleted();
 
     public abstract boolean isPaused();
+
+    protected void onRestart(int mode) {
+    }
 
     public Error getError() {
         return error;
@@ -113,9 +129,21 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     }
 
     public final void restart() {
-        cancel();
+        restart(RESTART_MODE_ABORT);
+    }
+
+    public final static int RESTART_MODE_GEOPARDISE = 0, RESTART_MODE_ABORT = 1;
+
+    public final void restart(int mode) {
+        onRestart(mode);
+        if (RESTART_MODE_GEOPARDISE == mode) {
+            geopardise();
+        } else {
+            cancel();
+        }
         execute(this.executionVariables);
     }
+
 
     public final void stop() {
         onStopped();
@@ -130,13 +158,34 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     }
 
     public final boolean compromiseWhen(int... when) {
-        boolean cancelled = cancel();
-        return cancelled;
+        boolean running = isRunning();
+        if (when != null || when.length == 0) {
+            when = new int[]{WHEN_ABORTED, WHEN_ANYWAY, WHEN_ERROR, WHEN_FAIL, WHEN_STARTED, WHEN_SUCCESS};
+        }
+        for (int i : when) {
+            if (runnableTask.containsKey(i)) {
+                try {
+                    runnableTask.get(i).clear();
+                } catch (Exception e) {
+
+                } finally {
+                    runnableTask.remove(i);
+                }
+            }
+        }
+        return running;
     }
 
-    public final boolean compromise() {
-        boolean cancelled = cancel();
+    boolean geopardise = false;
 
+    public final boolean hasBeenGeopardise() {
+        return geopardise;
+    }
+
+    public final boolean geopardise() {
+        geopardise = true;
+        compromiseWhen();
+        boolean cancelled = cancel();
         return cancelled;
 
     }
@@ -163,6 +212,22 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     public <T extends Process> T runWhen(Runnable runnable, int... when) {
         for (int value : when) {
             addFuture(runnable, value);
+        }
+        return (T) this;
+    }
+
+    public <T extends Process> T sendWhen(final MessageCarrier message, int... when) {
+        return sendWhen(message, new Object[0], when);
+    }
+
+    public <T extends Process> T sendWhen(final MessageCarrier message, final Object[] messages, int... when) {
+        for (int value : when) {
+            addFuture(new Runnable() {
+                @Override
+                public void run() {
+                    message.handleMessage(messages);
+                }
+            }, value);
         }
         return (T) this;
     }
@@ -208,58 +273,83 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     }
 
     private void executeWhen(ConcurrentLinkedQueue<Runnable> runnableList) {
-        for (Runnable runnable : runnableList) {
-            if (!executedRunnable.contains(runnable)) {
-                runnable.run();
-                executedRunnable.add(runnable);
+        if (!geopardise && runnableList != null && runnableList.size() > 0) {
+            for (Runnable runnable : runnableList) {
+                if (!executedRunnable.contains(runnable)) {
+                    runnable.run();
+                    executedRunnable.add(runnable);
+                }
             }
         }
     }
 
-    protected final void notifyProcessCompleted(boolean state) {
-        for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
-            executionListener.onCompleted(this, state);
+    protected void notifyProcessStarted() {
+        if (!geopardise) {
+            for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
+                executionListener.onStart(this);
+            }
+            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_STARTED);
+            executeWhen(runnableList);
         }
-        executedRunnable.clear();
-        ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ANYWAY);
-        executeWhen(runnableList);
+    }
+
+    protected final void notifyProcessCompleted(boolean state) {
+        if (!geopardise) {
+            for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
+                executionListener.onCompleted(this, state);
+            }
+            executedRunnable.clear();
+            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ANYWAY);
+            executeWhen(runnableList);
+        }
     }
 
     protected final void notifyProcessSuccess(Result result) {
-        notifyProcessCompleted(true);
-        for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
-            executionListener.onSuccess(this, result);
+        if (!geopardise) {
+            this.result = result;
+            notifyProcessCompleted(true);
+            for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
+                executionListener.onSuccess(this, result);
+            }
+            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_SUCCESS);
+            executeWhen(runnableList);
         }
-        ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_SUCCESS);
-        executeWhen(runnableList);
     }
 
 
     protected final void notifyProcessError(Error error) {
-        notifyProcessCompleted(false);
-        for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
-            executionListener.onError(this, error);
+        if (!geopardise) {
+            this.error = error;
+            notifyProcessCompleted(false);
+            for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
+                executionListener.onError(this, error);
+            }
+            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ERROR);
+            executeWhen(runnableList);
         }
-        ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ERROR);
-        executeWhen(runnableList);
     }
 
     protected final void notifyProcessFailed(Exception e) {
-        notifyProcessCompleted(false);
-        for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
-            executionListener.onFail(this, e);
+        if (!geopardise) {
+            this.exception = e;
+            notifyProcessCompleted(false);
+            for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
+                executionListener.onFail(this, e);
+            }
+            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_FAIL);
+            executeWhen(runnableList);
         }
-        ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_FAIL);
-        executeWhen(runnableList);
     }
 
 
     protected final void notifyProcessAborted() {
-        for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
-            executionListener.onAborted(this);
+        if (!geopardise) {
+            for (ProcessExecutionListener<Result, Error> executionListener : executionListeners) {
+                executionListener.onAborted(this);
+            }
+            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ABORTED);
+            executeWhen(runnableList);
         }
-        ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ABORTED);
-        executeWhen(runnableList);
     }
 
     public boolean hasError() {
@@ -312,6 +402,21 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         boolean removed = runnableTask.contains(When);
         runnableTask.remove(When);
         return removed;
+    }
+
+    public abstract static class MessageCarrier {
+        List<Object> messages;
+
+        void handleMessage(Object... messages) {
+            Collections.addAll(this.messages, messages);
+            onHandleMessage(messages);
+        }
+
+        public abstract void onHandleMessage(Object... messages);
+
+        public List<Object> getMessages() {
+            return messages;
+        }
     }
 
 

@@ -9,6 +9,12 @@ import com.istat.freedev.processor.interfaces.ProcessExecutionListener;
 
 public class ProcessTools {
     public static <T, Y extends Process.ProcessError> void attachToProcessCycle(final Process<T, Y> process, final ProcessExecutionListener<T, Y> listener) {
+        Runnable start = new Runnable() {
+            @Override
+            public void run() {
+                listener.onStart(process);
+            }
+        };
         Runnable complete = new Runnable() {
             @Override
             public void run() {
@@ -39,6 +45,7 @@ public class ProcessTools {
                 listener.onAborted(process);
             }
         };
+        process.runWhen(start, Process.WHEN_STARTED);
         process.runWhen(complete, Process.WHEN_ANYWAY);
         process.runWhen(success, Process.WHEN_SUCCESS);
         process.runWhen(error, Process.WHEN_ERROR);
