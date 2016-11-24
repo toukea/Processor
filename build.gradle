@@ -25,7 +25,16 @@ android {
         }
     }
 }
+task clearJar(type: Delete) {
+    delete '../build/libs/processor.jar'
+}
 
+task makeJar(type: Copy) {
+    from('build/intermediates/bundles/release/')
+    into('../build/libs/')
+    include('classes.jar')
+    rename('classes.jar', 'processor.jar')
+}
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {

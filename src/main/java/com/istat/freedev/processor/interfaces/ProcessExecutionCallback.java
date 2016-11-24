@@ -6,7 +6,7 @@ import com.istat.freedev.processor.Process;
  * Created by istat on 14/10/16.
  */
 
-public interface ProcessExecutionListener<Result, Error extends Process.ProcessError> {
+public interface ProcessExecutionCallback<Result, Error extends Process.ProcessError> {
     public void onStart(Process process);
 
     public void onCompleted(Process process, boolean success);

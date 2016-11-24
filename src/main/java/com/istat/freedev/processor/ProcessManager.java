@@ -299,7 +299,7 @@ public final class ProcessManager {
         return processQueue.size();
     }
 
-    public final static int gertGlobalRunningProcessCount() {
+    public final static int getGlobalRunningProcessCount() {
         return globalProcessQueue.size();
     }
 

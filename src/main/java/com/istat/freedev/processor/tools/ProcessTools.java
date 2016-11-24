@@ -1,14 +1,14 @@
 package com.istat.freedev.processor.tools;
 
 import com.istat.freedev.processor.Process;
-import com.istat.freedev.processor.interfaces.ProcessExecutionListener;
+import com.istat.freedev.processor.interfaces.ProcessExecutionCallback;
 
 /**
  * Created by istat on 18/11/16.
  */
 
 public class ProcessTools {
-    public static <T, Y extends Process.ProcessError> void attachToProcessCycle(final Process<T, Y> process, final ProcessExecutionListener<T, Y> listener) {
+    public static <T, Y extends Process.ProcessError> void attachToProcessCycle(final Process<T, Y> process, final ProcessExecutionCallback<T, Y> listener) {
         Runnable start = new Runnable() {
             @Override
             public void run() {
