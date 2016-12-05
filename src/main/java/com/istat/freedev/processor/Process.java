@@ -27,17 +27,18 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     Error error;
     Exception exception;
     String id;
-    final ConcurrentLinkedQueue<ProcessCallback<Result, Error>> executionListeners = new ConcurrentLinkedQueue<ProcessCallback<Result, Error>>();
+    final ConcurrentLinkedQueue<ProcessCallback<Result, Error>> processCallbacks = new ConcurrentLinkedQueue<ProcessCallback<Result, Error>>();
     private long startingTime = -1, completionTime = -1;
     protected Object[] executionVariables = new Object[0];
-
 
     public void setFlag(int flag) {
         this.flag = flag;
     }
 
-    protected void addExecutionCallback(ProcessCallback<Result, Error> executionListener) {
-        this.executionListeners.add(executionListener);
+    protected void addProcessCallback(ProcessCallback<Result, Error> executionListener) {
+        if (executionListener != null) {
+            this.processCallbacks.add(executionListener);
+        }
     }
 
     public Object[] getExecutionVariables() {
@@ -133,6 +134,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     }
 
     public final static int RESTART_MODE_GEOPARDISE = 0, RESTART_MODE_ABORT = 1;
+    private final static int TIME_MILLISEC_WAIT_FOR_RESTART = 100;
 
     public final void restart(int mode) {
         onRestart(mode);
@@ -141,7 +143,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         } else {
             cancel();
         }
-        execute(this.executionVariables);
+        execute(Process.this.executionVariables);
     }
 
 
@@ -285,7 +287,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
 
     protected void notifyProcessStarted() {
         if (!geopardise) {
-            for (ProcessCallback<Result, Error> executionListener : executionListeners) {
+            for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                 executionListener.onStart(this);
             }
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_STARTED);
@@ -295,7 +297,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
 
     protected final void notifyProcessCompleted(boolean state) {
         if (!geopardise) {
-            for (ProcessCallback<Result, Error> executionListener : executionListeners) {
+            for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                 executionListener.onCompleted(this, state);
             }
             executedRunnable.clear();
@@ -308,7 +310,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         if (!geopardise) {
             this.result = result;
             notifyProcessCompleted(true);
-            for (ProcessCallback<Result, Error> executionListener : executionListeners) {
+            for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                 executionListener.onSuccess(this, result);
             }
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_SUCCESS);
@@ -321,7 +323,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         if (!geopardise) {
             this.error = error;
             notifyProcessCompleted(false);
-            for (ProcessCallback<Result, Error> executionListener : executionListeners) {
+            for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                 executionListener.onError(this, error);
             }
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ERROR);
@@ -333,7 +335,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         if (!geopardise) {
             this.exception = e;
             notifyProcessCompleted(false);
-            for (ProcessCallback<Result, Error> executionListener : executionListeners) {
+            for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                 executionListener.onFail(this, e);
             }
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_FAIL);
@@ -344,7 +346,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
 
     protected final void notifyProcessAborted() {
         if (!geopardise) {
-            for (ProcessCallback<Result, Error> executionListener : executionListeners) {
+            for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                 executionListener.onAborted(this);
             }
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ABORTED);
@@ -369,15 +371,15 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     }
 
     public int removeAllExecutionCallback() {
-        int callbackCount = executionListeners.size();
-        executionListeners.clear();
+        int callbackCount = processCallbacks.size();
+        processCallbacks.clear();
         return callbackCount;
     }
 
     public boolean removeExecutionCallback(ProcessCallback callback) {
-        boolean removed = executionListeners.contains(callback);
+        boolean removed = processCallbacks.contains(callback);
         if (removed) {
-            executionListeners.remove(callback);
+            processCallbacks.remove(callback);
         }
         return removed;
     }
@@ -418,6 +420,4 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
             return messages;
         }
     }
-
-
 }

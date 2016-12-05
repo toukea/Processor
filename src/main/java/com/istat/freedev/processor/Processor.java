@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Created by istat on 04/10/16.
  */
 
-public final class Processor {
+public class Processor {
     public final static String DEFAULT_PROCESSOR_TAG = "com.istat.freedev.processor.DEFAULT";
     final static ConcurrentHashMap<String, Processor> processorQueue = new ConcurrentHashMap<String, Processor>() {
         {
@@ -42,16 +42,25 @@ public final class Processor {
         return getProcessManager().execute(process, PID, vars);
     }
 
-    public int shutDown() {
+    public final int shutDown() {
+        onShutdown();
         int runningProcess = release();
         processorQueue.remove(this);
         return runningProcess;
     }
 
-    public int release() {
+
+    public final int release() {
+        onRelease();
         int runningProcess = getProcessManager().getRunningProcessCount();
         getProcessManager().cancelAll();
         return runningProcess;
+    }
+
+    protected void onRelease() {
+    }
+
+    protected void onShutdown() {
     }
 
     public ProcessManager getProcessManager() {

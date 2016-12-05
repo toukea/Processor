@@ -1,5 +1,7 @@
 package com.istat.freedev.processor;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 
 import com.istat.freedev.processor.interfaces.ProcessListener;
@@ -60,7 +62,7 @@ public final class ProcessManager {
     }
 
     /**
-     * whether or not current processManager has running process.
+     * whether or not current manager has running process.
      *
      * @return
      */
@@ -75,7 +77,7 @@ public final class ProcessManager {
      * @param PID
      * @param vars
      * @return
-     * @throws ProcessException if given id is already used inside the processManager
+     * @throws ProcessException if given id is already used inside the manager
      */
     public final Process execute(Process process, String PID, Object... vars) throws ProcessException {
         if (isRunningPID(PID)) {
@@ -104,7 +106,7 @@ public final class ProcessManager {
     }
 
     /**
-     * Opt a process started by the processManager and which is always running using his PID.
+     * Opt a process started by the manager and which is always running using his PID.
      *
      * @param PID
      * @return
@@ -213,19 +215,24 @@ public final class ProcessManager {
         if (TextUtils.isEmpty(initialPID)) {
             throw new ProcessException("Oups, you looking for a Process with PID=NULL, can't exist one.");
         }
-        if (TextUtils.isEmpty(initialPID)) {
+        if (TextUtils.isEmpty(updatePID)) {
             throw new ProcessException("Oups, you atempt to set a NULL value for  Process with ID=" + initialPID);
         }
         if (!processQueue.containsKey(initialPID)) {
-            throw new ProcessException("Oups, not running process associated to id=" + initialPID + " processManager can't switch id with new PID= " + updatePID);
+            throw new ProcessException("Oups, not running process associated to id=" + initialPID + " manager can't switch id with new PID= " + updatePID);
         }
         if (processQueue.containsKey(updatePID)) {
             throw new ProcessException("Oups, ConcurrentProcessId a running process is alrady associated to this id=" + updatePID + ". ");
         }
         Process process = processQueue.get(initialPID);
         process.setId(updatePID);
-        processQueue.put(updatePID, process);
+        setPID(updatePID, process);
         return process;
+    }
+
+    private void setPID(String id, Process process) {
+        processQueue.put(id, process);
+        globalProcessQueue.put(id, process);
     }
 
     /**
@@ -249,7 +256,7 @@ public final class ProcessManager {
         if (processListeners.contains(listener)) {
             processListeners.remove(listener);
         } else {
-            throw new Exception("this listener is not registered to drive processManager.");
+            throw new Exception("this listener is not registered to drive manager.");
         }
     }
 
@@ -269,8 +276,7 @@ public final class ProcessManager {
 
     private void notifyProcessStarted(final Process process, Object[] vars) {
         String id = process.getId();
-        globalProcessQueue.put(id, process);
-        processQueue.put(id, process);
+        setPID(id, process);
         for (ProcessListener listener : processListeners) {
             listener.onProcessCompleted(process, id);
         }
@@ -312,4 +318,13 @@ public final class ProcessManager {
             super(e);
         }
     }
+
+//    public final void runOnUIThread(Runnable runnable) {
+//        mHandler.post(runnable);
+//
+//    }
+//
+//    public final void postDelayed(Runnable runnable, int delayed) {
+//        mHandler.postDelayed(runnable, delayed);
+//    }
 }
