@@ -40,7 +40,7 @@ public final class ProcessManager {
             }
             process.setId(id);
         }
-        process.execute(vars);
+        process.execute(this, vars);
         notifyProcessStarted(process, vars);
         return process;
     }
@@ -98,6 +98,7 @@ public final class ProcessManager {
         while (enumProcess.hasMoreElements()) {
             enumProcess.nextElement().cancel();
         }
+        mHandler.removeCallbacksAndMessages(null);
         return livingProcess;
     }
 
@@ -319,12 +320,14 @@ public final class ProcessManager {
         }
     }
 
-//    public final void runOnUIThread(Runnable runnable) {
-//        mHandler.post(runnable);
-//
-//    }
-//
-//    public final void postDelayed(Runnable runnable, int delayed) {
-//        mHandler.postDelayed(runnable, delayed);
-//    }
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
+
+    public final void runOnUIThread(Runnable runnable) {
+        mHandler.post(runnable);
+
+    }
+
+    public final void postDelayed(Runnable runnable, int delayed) {
+        mHandler.postDelayed(runnable, delayed);
+    }
 }

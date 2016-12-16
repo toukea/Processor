@@ -30,6 +30,11 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     final ConcurrentLinkedQueue<ProcessCallback<Result, Error>> processCallbacks = new ConcurrentLinkedQueue<ProcessCallback<Result, Error>>();
     private long startingTime = -1, completionTime = -1;
     protected Object[] executionVariables = new Object[0];
+    ProcessManager manager;
+
+    public ProcessManager getManager() {
+        return manager;
+    }
 
     public void setFlag(int flag) {
         this.flag = flag;
@@ -45,7 +50,8 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         return executionVariables;
     }
 
-    void execute(Object... vars) {
+    final void execute(ProcessManager manager, Object... vars) {
+        this.manager = manager;
         geopardise = false;
         try {
             this.executionVariables = vars;
@@ -143,7 +149,14 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         } else {
             cancel();
         }
-        execute(Process.this.executionVariables);
+        final Object[] executionVars = this.executionVariables;
+        getManager().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                execute(Process.this.manager, executionVars);
+            }
+        }, TIME_MILLISEC_WAIT_FOR_RESTART);
+
     }
 
 
