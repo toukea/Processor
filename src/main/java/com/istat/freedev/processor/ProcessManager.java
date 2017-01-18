@@ -50,7 +50,7 @@ public final class ProcessManager {
      *
      * @return
      */
-    public List<Process> getRunningRProcess() {
+    public List<Process> getRunningProcess() {
         Iterator<String> iterator = processQueue.keySet().iterator();
         List<Process> list = new ArrayList<Process>();
         while (iterator.hasNext()) {

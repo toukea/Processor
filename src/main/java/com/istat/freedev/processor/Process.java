@@ -235,12 +235,13 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         return sendWhen(message, new Object[0], when);
     }
 
-    public <T extends Process> T sendWhen(final MessageCarrier message, final Object[] messages, int... when) {
+    public <T extends Process> T sendWhen(final MessageCarrier carrier, final Object[] messages, int... when) {
         for (int value : when) {
             addFuture(new Runnable() {
                 @Override
                 public void run() {
-                    message.handleMessage(messages);
+                    carrier.process = Process.this;
+                    carrier.handleMessage(messages);
                 }
             }, value);
         }
@@ -421,13 +422,14 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
 
     public abstract static class MessageCarrier {
         List<Object> messages;
+        Process process;
 
         void handleMessage(Object... messages) {
             Collections.addAll(this.messages, messages);
-            onHandleMessage(messages);
+            onHandleMessage(process, messages);
         }
 
-        public abstract void onHandleMessage(Object... messages);
+        public abstract void onHandleMessage(Process process, Object... messages);
 
         public List<Object> getMessages() {
             return messages;
