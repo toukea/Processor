@@ -53,7 +53,7 @@ public class Processor {
     public final int release() {
         onRelease();
         int runningProcess = getProcessManager().getRunningProcessCount();
-        getProcessManager().cancelAll();
+        getProcessManager().release();
         return runningProcess;
     }
 

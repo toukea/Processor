@@ -102,6 +102,16 @@ public final class ProcessManager {
         return livingProcess;
     }
 
+    public int release() {
+        int livingProcess = processQueue.size();
+        Enumeration<Process> enumProcess = processQueue.elements();
+        while (enumProcess.hasMoreElements()) {
+            enumProcess.nextElement().geopardise();
+        }
+        mHandler.removeCallbacksAndMessages(null);
+        return livingProcess;
+    }
+
     ProcessManager() {
 
     }

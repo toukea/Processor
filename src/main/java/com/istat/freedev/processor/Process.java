@@ -398,7 +398,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         return removed;
     }
 
-    public boolean cancelWhen(Runnable runnable) {
+    public boolean undoWhen(Runnable runnable) {
         Iterator<Integer> iterator = runnableTask.keySet().iterator();
         while (iterator.hasNext()) {
             Integer when = iterator.next();
@@ -414,7 +414,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         return false;
     }
 
-    public boolean cancelWhen(int When) {
+    public boolean undoWhen(int When) {
         boolean removed = runnableTask.contains(When);
         runnableTask.remove(When);
         return removed;
