@@ -1,2 +1,3 @@
 -create Processable interface
 -Create Process from Processable
+-create and implement ProcessorMachine.class
