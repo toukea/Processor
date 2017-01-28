@@ -144,10 +144,12 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
 
     public final void restart(int mode) {
         onRestart(mode);
-        if (RESTART_MODE_GEOPARDISE == mode) {
-            geopardise();
-        } else {
-            cancel();
+        if (isRunning()) {
+            if (RESTART_MODE_GEOPARDISE == mode) {
+                geopardise();
+            } else {
+                cancel();
+            }
         }
         final Object[] executionVars = this.executionVariables;
         getManager().postDelayed(new Runnable() {
