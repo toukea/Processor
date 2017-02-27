@@ -3,7 +3,7 @@ package com.istat.freedev.processor;
 import android.text.TextUtils;
 
 import com.istat.freedev.processor.interfaces.ProcessCallback;
-import com.istat.freedev.processor.tools.ProcessTools;
+import com.istat.freedev.processor.utils.ProcessTools;
 
 import java.util.Collections;
 import java.util.Iterator;
