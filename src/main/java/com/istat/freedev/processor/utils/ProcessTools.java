@@ -1,4 +1,4 @@
-package com.istat.freedev.processor.tools;
+package com.istat.freedev.processor.utils;
 
 import com.istat.freedev.processor.Process;
 import com.istat.freedev.processor.interfaces.ProcessCallback;
@@ -8,7 +8,7 @@ import com.istat.freedev.processor.interfaces.ProcessCallback;
  */
 
 public class ProcessTools {
-    public static <T, Y extends Process.ProcessError> void attachToProcessCycle(final Process<T, Y> process, final ProcessCallback<T, Y> listener) {
+    public static <T, Y extends Throwable> void attachToProcessCycle(final Process<T, Y> process, final ProcessCallback<T, Y> listener) {
         Runnable start = new Runnable() {
             @Override
             public void run() {

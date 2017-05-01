@@ -31,7 +31,7 @@ public final class ProcessManager {
      * @param vars
      * @return
      */
-    public final Process execute(Process process, Object... vars) {
+    public final <T extends Process> T execute(T process, Object... vars) {
         String id;
         if (!process.hasId()) {
             id = System.currentTimeMillis() + "";
@@ -56,7 +56,11 @@ public final class ProcessManager {
         while (iterator.hasNext()) {
             String id = iterator.next();
             Process process = getProcessById(id);
-            list.add(process);
+            if (process.isRunning()) {
+                list.add(process);
+            } else {
+                processQueue.remove(process);
+            }
         }
         return list;
     }
@@ -79,7 +83,7 @@ public final class ProcessManager {
      * @return
      * @throws ProcessException if given id is already used inside the manager
      */
-    public final Process execute(Process process, String PID, Object... vars) throws ProcessException {
+    public final <T extends Process> T execute(T process, String PID, Object... vars) throws ProcessException {
         if (isRunningPID(PID)) {
             throw new ProcessException("Sorry, a running process with same PID alrady running");
         }
@@ -130,6 +134,14 @@ public final class ProcessManager {
             } else {
                 processQueue.remove(process.getId());
             }
+        }
+        return null;
+    }
+
+    public <T extends Process<?, ?>> T getProcessById(String PID, Class<T> cLass) {
+        Process p = getProcessById(PID);
+        if (p != null && cLass == p.getClass()) {
+            return (T) p;
         }
         return null;
     }

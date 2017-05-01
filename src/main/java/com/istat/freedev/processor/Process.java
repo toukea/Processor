@@ -3,7 +3,7 @@ package com.istat.freedev.processor;
 import android.text.TextUtils;
 
 import com.istat.freedev.processor.interfaces.ProcessCallback;
-import com.istat.freedev.processor.tools.ProcessTools;
+import com.istat.freedev.processor.utils.ProcessTools;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * Created by istat on 04/10/16.
  */
 
-public abstract class Process<Result, Error extends Process.ProcessError> {
+public abstract class Process<Result, Error extends Throwable> {
     public final static int FLAG_SYS_DEFAUlT = 0;
     public final static int FLAG_SYS_CANCELABLE = 1;
     public final static int FLAG_USER_CANCELABLE = 1;
@@ -212,17 +212,6 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
     }
 
 
-    public static class ProcessError extends ProcessManager.ProcessException {
-
-        public ProcessError(String message) {
-            super(message);
-        }
-
-        public ProcessError(Exception exception) {
-            super(exception);
-        }
-    }
-
     final ConcurrentLinkedQueue<Runnable> executedRunnable = new ConcurrentLinkedQueue<Runnable>();
     final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>> runnableTask = new ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>>();
 
@@ -232,6 +221,8 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         }
         return (T) this;
     }
+
+
 
     public <T extends Process> T sendWhen(final MessageCarrier message, int... when) {
         return sendWhen(message, new Object[0], when);
@@ -311,7 +302,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         }
     }
 
-    protected final void notifyProcessCompleted(boolean state) {
+    final void notifyProcessCompleted(boolean state) {
         if (!geopardise) {
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                 executionListener.onCompleted(this, state);
@@ -321,6 +312,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
             executeWhen(runnableList);
         }
     }
+
 
     protected final void notifyProcessSuccess(Result result) {
         if (!geopardise) {
@@ -347,6 +339,7 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         }
     }
 
+
     protected final void notifyProcessFailed(Exception e) {
         if (!geopardise) {
             this.exception = e;
@@ -359,7 +352,6 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
         }
     }
 
-
     protected final void notifyProcessAborted() {
         if (!geopardise) {
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
@@ -367,6 +359,58 @@ public abstract class Process<Result, Error extends Process.ProcessError> {
             }
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ABORTED);
             executeWhen(runnableList);
+        }
+    }
+
+    protected final void notifyDelayedProcessAborted(int delay) {
+        if (delay <= 0) {
+            notifyProcessAborted();
+        } else {
+            manager.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    notifyProcessAborted();
+                }
+            }, delay);
+        }
+    }
+
+    protected final void notifyDelayedProcessFailed(final Exception e, int delay) {
+        if (delay <= 0) {
+            notifyProcessFailed(e);
+        } else {
+            manager.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    notifyProcessFailed(e);
+                }
+            }, delay);
+        }
+    }
+
+    protected final void notifyDelayedProcessError(final Error error, int delay) {
+        if (delay <= 0) {
+            notifyProcessError(error);
+        } else {
+            manager.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    notifyProcessError(error);
+                }
+            }, delay);
+        }
+    }
+
+    protected final void notifyDelayedProcessSuccess(final Result result, int delay) {
+        if (delay <= 0) {
+            notifyProcessSuccess(result);
+        } else {
+            manager.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    notifyProcessSuccess(result);
+                }
+            }, delay);
         }
     }
 

@@ -25,6 +25,10 @@ public class Processor {
         return processorQueue.get(DEFAULT_PROCESSOR_TAG);
     }
 
+    Processor() {
+
+    }
+
     public final static Processor from(String processorTag) {
         if (processorQueue.contains(processorTag)) {
             return processorQueue.get(processorTag);
@@ -73,6 +77,10 @@ public class Processor {
 
     public final int getProcessCount() {
         return getProcessManager().getRunningProcessCount();
+    }
+
+    public final static ProcessManager getProcessManager(String processorTag) {
+        return Processor.from(processorTag).getProcessManager();
     }
 
     public final boolean hasWork() {
