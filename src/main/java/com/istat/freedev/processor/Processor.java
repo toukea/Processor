@@ -11,11 +11,12 @@ public class Processor {
     public final static String DEFAULT_PROCESSOR_TAG = "com.istat.freedev.processor.DEFAULT";
     final static ConcurrentHashMap<String, Processor> processorQueue = new ConcurrentHashMap<String, Processor>() {
         {
-            put(DEFAULT_PROCESSOR_TAG, new Processor());
+            put(DEFAULT_PROCESSOR_TAG, new Processor(DEFAULT_PROCESSOR_TAG));
         }
     };
     final static ProcessManager defaultProcessManager = new ProcessManager();
     final ProcessManager processManager = new ProcessManager();
+    String nameSpace;
 
     public final static ProcessManager getDefaultProcessManager() {
         return defaultProcessManager;
@@ -25,15 +26,15 @@ public class Processor {
         return processorQueue.get(DEFAULT_PROCESSOR_TAG);
     }
 
-    Processor() {
-
+    Processor(String nameSpace) {
+        this.nameSpace = nameSpace;
     }
 
     public final static Processor from(String processorTag) {
         if (processorQueue.contains(processorTag)) {
             return processorQueue.get(processorTag);
         }
-        Processor processor = new Processor();
+        Processor processor = new Processor(processorTag);
         processorQueue.put(processorTag, processor);
         return processor;
     }
@@ -42,7 +43,7 @@ public class Processor {
         return getProcessManager().execute(process, vars);
     }
 
-    public final Process execute(Process process, String PID, Object... vars) throws ProcessManager.ProcessException {
+    public final Process execute(String PID, Process process, Object... vars) throws ProcessManager.ProcessException {
         return getProcessManager().execute(process, PID, vars);
     }
 
@@ -87,6 +88,7 @@ public class Processor {
         return getProcessCount() > 0;
     }
 
+    @Deprecated
     public final static int shutDownAll() {
         Iterator<String> iterator = processorQueue.keySet().iterator();
         int count = 0;
@@ -95,10 +97,11 @@ public class Processor {
             processorQueue.get(name).shutDown();
             count++;
         }
-        processorQueue.put(DEFAULT_PROCESSOR_TAG, new Processor());
+        processorQueue.put(DEFAULT_PROCESSOR_TAG, new Processor(DEFAULT_PROCESSOR_TAG));
         return count;
     }
 
+    @Deprecated
     public final static int releaseAll() {
         Iterator<String> iterator = processorQueue.keySet().iterator();
         int count = 0;
@@ -109,4 +112,10 @@ public class Processor {
         }
         return count;
     }
+
+    public String getNameSpace() {
+        return nameSpace;
+    }
+
+
 }

@@ -264,7 +264,7 @@ public final class ProcessManager {
      * @param listener
      */
     public final void registerProcessListener(ProcessListener listener) {
-        if (!processListeners.contains(listener)) {
+        if (listener != null && !processListeners.contains(listener)) {
             processListeners.add(listener);
         }
     }
@@ -301,7 +301,7 @@ public final class ProcessManager {
         String id = process.getId();
         setPID(id, process);
         for (ProcessListener listener : processListeners) {
-            listener.onProcessCompleted(process, id);
+            listener.onProcessStarted(process, id);
         }
         process.runWhen(new Runnable() {
             @Override

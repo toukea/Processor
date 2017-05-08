@@ -7,8 +7,8 @@ import com.istat.freedev.processor.Process;
  */
 
 public interface ProcessListener {
-    public void onProcessStarted(Process process, String id);
+    void onProcessStarted(Process process, String id);
 
-    public void onProcessCompleted(Process process, String id);
+    void onProcessCompleted(Process process, String id);
 
 }
