@@ -83,7 +83,7 @@ public final class ProcessManager {
      * @return
      * @throws ProcessException if given id is already used inside the manager
      */
-    public final <T extends Process> T execute(T process, String PID, Object... vars) throws ProcessException {
+    public final <T extends Process> T execute(String PID, T process, Object... vars) throws ProcessException {
         if (isRunningPID(PID)) {
             throw new ProcessException("Sorry, a running process with same PID alrady running");
         }

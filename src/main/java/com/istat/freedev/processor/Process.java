@@ -40,7 +40,7 @@ public abstract class Process<Result, Error extends Throwable> {
         this.flag = flag;
     }
 
-    protected void addProcessCallback(ProcessCallback<Result, Error> executionListener) {
+    public void addProcessCallback(ProcessCallback<Result, Error> executionListener) {
         if (executionListener != null) {
             this.processCallbacks.add(executionListener);
         }
@@ -91,6 +91,18 @@ public abstract class Process<Result, Error extends Throwable> {
         return exception;
     }
 
+    public <T> T getErrortAs(Class<T> cLass) {
+        if (error != null) {
+            if (cLass.isAssignableFrom(error.getClass())) {
+                return (T) error;
+            }
+            if (CharSequence.class.isAssignableFrom(cLass)) {
+                return (T) error.toString();
+            }
+        }
+        return null;
+    }
+
     public <T extends Error> T optError() {
         try {
             return (T) error;
@@ -101,6 +113,18 @@ public abstract class Process<Result, Error extends Throwable> {
 
     public Result getResult() {
         return result;
+    }
+
+    public <T> T getResultAs(Class<T> cLass) {
+        if (result != null) {
+            if (cLass.isAssignableFrom(result.getClass())) {
+                return (T) result;
+            }
+            if (CharSequence.class.isAssignableFrom(cLass)) {
+                return (T) result.toString();
+            }
+        }
+        return null;
     }
 
     public <T> T optResult() {
@@ -221,7 +245,6 @@ public abstract class Process<Result, Error extends Throwable> {
         }
         return (T) this;
     }
-
 
 
     public <T extends Process> T sendWhen(final MessageCarrier message, int... when) {
@@ -436,7 +459,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return callbackCount;
     }
 
-    public boolean removeExecutionCallback(ProcessCallback callback) {
+    public boolean removeProcessCallback(ProcessCallback callback) {
         boolean removed = processCallbacks.contains(callback);
         if (removed) {
             processCallbacks.remove(callback);
