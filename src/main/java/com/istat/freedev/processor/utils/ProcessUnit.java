@@ -2,6 +2,7 @@ package com.istat.freedev.processor.utils;
 
 import com.istat.freedev.processor.ProcessManager;
 import com.istat.freedev.processor.Processor;
+import com.istat.freedev.processor.interfaces.ProcessListener;
 
 /**
  * Created by istat on 07/02/17.
@@ -33,5 +34,24 @@ public class ProcessUnit {
 
     public boolean cancel() {
         return getProcessManager().cancelAll() > 0;
+    }
+
+    public ProcessUnit registerProcessListener(ProcessListener listener) {
+
+        getProcessManager().registerProcessListener(listener);
+        return this;
+    }
+
+    public boolean unRegisterProcessListener(ProcessListener listener) {
+        try {
+            getProcessManager().unRegisterProcessListener(listener);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean isCoputing() {
+        return getProcessManager().hasRunningProcess();
     }
 }
