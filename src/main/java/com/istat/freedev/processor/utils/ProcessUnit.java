@@ -33,7 +33,7 @@ public class ProcessUnit {
     }
 
     public boolean cancel() {
-        return getProcessManager().cancelAll() > 0;
+        return getProcessManager().release() > 0;
     }
 
     public ProcessUnit registerProcessListener(ProcessListener listener) {
@@ -51,7 +51,7 @@ public class ProcessUnit {
         }
     }
 
-    public boolean isCoputing() {
+    public boolean isComputing() {
         return getProcessManager().hasRunningProcess();
     }
 }

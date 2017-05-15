@@ -107,13 +107,8 @@ public final class ProcessManager {
     }
 
     public int release() {
-        int livingProcess = processQueue.size();
-        Enumeration<Process> enumProcess = processQueue.elements();
-        while (enumProcess.hasMoreElements()) {
-            enumProcess.nextElement().geopardise();
-        }
-        mHandler.removeCallbacksAndMessages(null);
-        return livingProcess;
+        unRegisterAllProcessListener();
+        return cancelAll();
     }
 
     ProcessManager() {
@@ -281,6 +276,12 @@ public final class ProcessManager {
         } else {
             throw new Exception("this listener is not registered to drive manager.");
         }
+    }
+
+    private final int unRegisterAllProcessListener() {
+        int listenerSize = processListeners.size();
+        processListeners.clear();
+        return listenerSize;
     }
 
     static String[] ID_PROPOSITION_CHAR = {"0", "1", "2", "3", "4", "5",
