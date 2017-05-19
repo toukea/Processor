@@ -29,7 +29,7 @@ public abstract class Process<Result, Error extends Throwable> {
     String id;
     final ConcurrentLinkedQueue<ProcessCallback<Result, Error>> processCallbacks = new ConcurrentLinkedQueue<ProcessCallback<Result, Error>>();
     private long startingTime = -1, completionTime = -1;
-    protected Object[] executionVariables = new Object[0];
+    private Object[] executionVariableArray = new Object[0];
     ProcessManager manager;
 
     public ProcessManager getManager() {
@@ -46,17 +46,22 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-    public Object[] getExecutionVariables() {
-        return executionVariables;
+    public ExecutionVariables getExecutionVariables() {
+        return new ExecutionVariables();
+    }
+
+    public <T> T getExecutionVariable(int index) {
+        return getExecutionVariables().getVariable(index);
     }
 
     final void execute(ProcessManager manager, Object... vars) {
         this.manager = manager;
         geopardise = false;
         try {
-            this.executionVariables = vars;
+            this.executionVariableArray = vars;
             startingTime = System.currentTimeMillis();
-            onExecute(vars);
+            onExecute(vars);//TODO should be removed
+            onExecute(getExecutionVariables());
             notifyProcessStarted();
         } catch (Exception e) {
             notifyProcessStarted();
@@ -64,7 +69,13 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
+    @Deprecated
     protected abstract void onExecute(Object... vars);
+
+    //TODO should be abstract
+    protected void onExecute(ExecutionVariables executionVariables) {
+
+    }
 
     protected abstract void onResume();
 
@@ -175,7 +186,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 cancel();
             }
         }
-        final Object[] executionVars = this.executionVariables;
+        final Object[] executionVars = this.executionVariableArray;
         getManager().postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -494,7 +505,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return removed;
     }
 
-    public boolean undoWhen(Runnable runnable) {
+    public boolean cancelWhen(Runnable runnable) {
         Iterator<Integer> iterator = runnableTask.keySet().iterator();
         while (iterator.hasNext()) {
             Integer when = iterator.next();
@@ -510,7 +521,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return false;
     }
 
-    public boolean undoWhen(int When) {
+    public boolean cancelWhen(int When) {
         boolean removed = runnableTask.contains(When);
         runnableTask.remove(When);
         return removed;
@@ -532,9 +543,34 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-//    public class ExecutionVariables {
-//        public ExecutionVariables(Object[] objs) {
-//
-//        }
-//    }
+    public class ExecutionVariables {
+        public int getCount() {
+            return executionVariableArray.length;
+        }
+
+        public <T> T getVariable(int index) {
+            try {
+                return (T) executionVariableArray[index];
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+
+        public <T> T getVariable(int index, Class<T> cLass) throws ArrayIndexOutOfBoundsException, IllegalAccessException {
+            if (executionVariableArray.length <= index) {
+                throw new ArrayIndexOutOfBoundsException("executionVariables length=" + executionVariableArray.length + ", requested index=" + index
+                );
+            }
+            Object var = executionVariableArray[index];
+            if (var == null) {
+                return null;
+            }
+            if (cLass.isAssignableFrom(var.getClass())) {
+                return (T) var;
+            } else {
+                throw new IllegalArgumentException("Item at index=" + index + " has type class=" + var.getClass() + ", requested class=" + cLass);
+            }
+        }
+    }
 }
