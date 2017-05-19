@@ -60,7 +60,6 @@ public abstract class Process<Result, Error extends Throwable> {
         try {
             this.executionVariableArray = vars;
             startingTime = System.currentTimeMillis();
-            onExecute(vars);//TODO should be removed
             onExecute(getExecutionVariables());
             notifyProcessStarted();
         } catch (Exception e) {
@@ -69,13 +68,7 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-    @Deprecated
-    protected abstract void onExecute(Object... vars);
-
-    //TODO should be abstract
-    protected void onExecute(ExecutionVariables executionVariables) {
-
-    }
+    protected abstract void onExecute(ExecutionVariables executionVariables);
 
     protected abstract void onResume();
 
