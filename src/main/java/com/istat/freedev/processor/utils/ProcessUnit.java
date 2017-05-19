@@ -2,6 +2,7 @@ package com.istat.freedev.processor.utils;
 
 import com.istat.freedev.processor.ProcessManager;
 import com.istat.freedev.processor.Processor;
+import com.istat.freedev.processor.Process;
 import com.istat.freedev.processor.interfaces.ProcessListener;
 
 /**
@@ -53,5 +54,13 @@ public class ProcessUnit {
 
     public boolean isComputing() {
         return getProcessManager().hasRunningProcess();
+    }
+
+    public <R, E extends Throwable> Process<R, E> execute(Process<R, E> process, Object... vars) {
+        return getProcessManager().execute(process, vars);
+    }
+
+    public <R, E extends Throwable> Process<R, E> execute(String PID, Process<R, E> process, Object... vars) throws ProcessManager.ProcessException {
+        return getProcessManager().execute(PID, process, vars);
     }
 }

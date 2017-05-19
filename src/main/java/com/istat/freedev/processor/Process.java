@@ -333,6 +333,7 @@ public abstract class Process<Result, Error extends Throwable> {
             executedRunnable.clear();
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ANYWAY);
             executeWhen(runnableList);
+            onCompleted(state, result, error);
         }
     }
 
@@ -346,7 +347,28 @@ public abstract class Process<Result, Error extends Throwable> {
             }
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_SUCCESS);
             executeWhen(runnableList);
+            onSucceed(result);
         }
+    }
+
+    private void onCompleted(boolean state, Result result, Error error) {
+
+    }
+
+    private void onSucceed(Result result) {
+
+    }
+
+    private void onError(Error error) {
+
+    }
+
+    private void onFailed(Exception e) {
+
+    }
+
+    private void onAborted() {
+
     }
 
 
@@ -359,6 +381,7 @@ public abstract class Process<Result, Error extends Throwable> {
             }
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ERROR);
             executeWhen(runnableList);
+            onError(error);
         }
     }
 
@@ -372,8 +395,10 @@ public abstract class Process<Result, Error extends Throwable> {
             }
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_FAIL);
             executeWhen(runnableList);
+            onFailed(e);
         }
     }
+
 
     protected final void notifyProcessAborted() {
         if (!geopardise) {
@@ -382,8 +407,10 @@ public abstract class Process<Result, Error extends Throwable> {
             }
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ABORTED);
             executeWhen(runnableList);
+            onAborted();
         }
     }
+
 
     protected final void notifyDelayedProcessAborted(int delay) {
         if (delay <= 0) {
@@ -504,4 +531,10 @@ public abstract class Process<Result, Error extends Throwable> {
             return messages;
         }
     }
+
+//    public class ExecutionVariables {
+//        public ExecutionVariables(Object[] objs) {
+//
+//        }
+//    }
 }
