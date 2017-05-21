@@ -5,6 +5,7 @@ import android.text.TextUtils;
 import com.istat.freedev.processor.interfaces.ProcessCallback;
 import com.istat.freedev.processor.utils.ProcessTools;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -31,6 +32,7 @@ public abstract class Process<Result, Error extends Throwable> {
     private long startingTime = -1, completionTime = -1;
     private Object[] executionVariableArray = new Object[0];
     ProcessManager manager;
+    int state;
 
     public ProcessManager getManager() {
         return manager;
@@ -319,8 +321,29 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
+    protected void onCompleted(boolean state, Result result, Error error) {
+
+    }
+
+    protected void onSucceed(Result result) {
+
+    }
+
+    protected void onError(Error error) {
+
+    }
+
+    protected void onFailed(Exception e) {
+
+    }
+
+    protected void onAborted() {
+
+    }
+
     protected void notifyProcessStarted() {
         if (!geopardise) {
+            this.state = WHEN_STARTED;
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                 executionListener.onStart(this);
             }
@@ -344,6 +367,7 @@ public abstract class Process<Result, Error extends Throwable> {
 
     protected final void notifyProcessSuccess(Result result) {
         if (!geopardise) {
+            this.state = WHEN_SUCCESS;
             this.result = result;
             notifyProcessCompleted(true);
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
@@ -355,29 +379,9 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-    private void onCompleted(boolean state, Result result, Error error) {
-
-    }
-
-    private void onSucceed(Result result) {
-
-    }
-
-    private void onError(Error error) {
-
-    }
-
-    private void onFailed(Exception e) {
-
-    }
-
-    private void onAborted() {
-
-    }
-
-
     protected final void notifyProcessError(Error error) {
         if (!geopardise) {
+            this.state = WHEN_ERROR;
             this.error = error;
             notifyProcessCompleted(false);
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
@@ -392,6 +396,7 @@ public abstract class Process<Result, Error extends Throwable> {
 
     protected final void notifyProcessFailed(Exception e) {
         if (!geopardise) {
+            this.state = WHEN_FAIL;
             this.exception = e;
             notifyProcessCompleted(false);
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
@@ -406,6 +411,7 @@ public abstract class Process<Result, Error extends Throwable> {
 
     protected final void notifyProcessAborted() {
         if (!geopardise) {
+            this.state = WHEN_ABORTED;
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                 executionListener.onAborted(this);
             }
@@ -541,6 +547,14 @@ public abstract class Process<Result, Error extends Throwable> {
             return executionVariableArray.length;
         }
 
+        public Object[] asArray() {
+            return executionVariableArray;
+        }
+
+        public List<?> asList() {
+            return Arrays.asList(executionVariableArray);
+        }
+
         public <T> T getVariable(int index) {
             try {
                 return (T) executionVariableArray[index];
@@ -565,5 +579,9 @@ public abstract class Process<Result, Error extends Throwable> {
                 throw new IllegalArgumentException("Item at index=" + index + " has type class=" + var.getClass() + ", requested class=" + cLass);
             }
         }
+    }
+
+    public int getState() {
+        return state;
     }
 }
