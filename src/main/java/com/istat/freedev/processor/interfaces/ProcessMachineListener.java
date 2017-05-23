@@ -8,8 +8,7 @@ import com.istat.freedev.processor.ProcessManager;
  */
 
 public interface ProcessMachineListener {
-     void onProcessStarted(ProcessManager pm, Process process, String id);
+    void onProcessStarted(ProcessManager pm, Process process, String id);
 
-     void onProcessCompleted(ProcessManager pm, Process process, String id);
-
+    void onProcessCompleted(ProcessManager pm, Process process, String id);
 }

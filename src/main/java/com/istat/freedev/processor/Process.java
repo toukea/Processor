@@ -355,7 +355,7 @@ public abstract class Process<Result, Error extends Throwable> {
     final void notifyProcessCompleted(boolean state) {
         if (!geopardise) {
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                executionListener.onCompleted(this, state);
+                executionListener.onCompleted(this, this.result, state);
             }
             executedRunnable.clear();
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ANYWAY);

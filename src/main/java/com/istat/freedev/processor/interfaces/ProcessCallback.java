@@ -12,7 +12,7 @@ public interface ProcessCallback<Result, Error extends Throwable> {
      *
      * @param process
      */
-    public void onStart(Process process);
+    void onStart(Process<Result, Error> process);
 
     /**
      * called when process is completed
@@ -20,7 +20,7 @@ public interface ProcessCallback<Result, Error extends Throwable> {
      * @param process
      * @param success state if process succeed.
      */
-    public void onCompleted(Process process, boolean success);
+    void onCompleted(Process<Result, Error> process, Result result, boolean success);
 
     /**
      * called when the process succeed
@@ -28,7 +28,7 @@ public interface ProcessCallback<Result, Error extends Throwable> {
      * @param process
      * @param result  the process Result.
      */
-    public void onSuccess(Process process, Result result);
+    void onSuccess(Process<Result, Error> process, Result result);
 
     /**
      * The process is started but some error happen durring.
@@ -36,22 +36,22 @@ public interface ProcessCallback<Result, Error extends Throwable> {
      * @param process
      * @param error   the error rencontered by the process
      */
-    public void onError(Process process, Error error);
+    void onError(Process<Result, Error> process, Error error);
 
     /**
      * The process is started. but never running.s
      *
      * @param process
-     * @param e the exception that cause the process failed
+     * @param e       the exception that cause the process failed
      */
-    public void onFail(Process process, Exception e);
+    void onFail(Process<Result, Error> process, Exception e);
 
     /**
      * called when the process has been aborted.
      *
      * @param process
      */
-    public void onAborted(Process process);
+    void onAborted(Process<Result, Error> process);
 
 
 }
