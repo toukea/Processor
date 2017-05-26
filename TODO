@@ -2,3 +2,7 @@
 -Create Process from Processable
 -create and implement ProcessorMachine.class
 -manage processing state after notifyState function invocation.
+
+
+Questions
+-Process instance should be handle himself (property class definition) his own processManager?

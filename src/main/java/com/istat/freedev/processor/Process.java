@@ -33,6 +33,7 @@ public abstract class Process<Result, Error extends Throwable> {
     private Object[] executionVariableArray = new Object[0];
     ProcessManager manager;
     int state;
+    boolean canceled;
 
     public ProcessManager getManager() {
         return manager;
@@ -85,6 +86,10 @@ public abstract class Process<Result, Error extends Throwable> {
     public abstract boolean isCompleted();
 
     public abstract boolean isPaused();
+
+    public boolean isCanceled() {
+        return canceled;
+    }
 
     protected void onRestart(int mode) {
     }
@@ -199,6 +204,7 @@ public abstract class Process<Result, Error extends Throwable> {
     public final boolean cancel() {
         boolean running = isRunning();
         if (running) {
+            canceled = true;
             onCancel();
         }
         return running;
@@ -246,6 +252,9 @@ public abstract class Process<Result, Error extends Throwable> {
     final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>> runnableTask = new ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>>();
 
     public <T extends Process> T runWhen(Runnable runnable, int... when) {
+//        if(!isRunning()){
+//            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any runWhen or promise");
+//        }
         for (int value : when) {
             addFuture(runnable, value);
         }
