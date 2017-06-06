@@ -588,6 +588,10 @@ public abstract class Process<Result, Error extends Throwable> {
                 throw new IllegalArgumentException("Item at index=" + index + " has type class=" + var.getClass() + ", requested class=" + cLass);
             }
         }
+
+        public int length() {
+            return executionVariableArray.length;
+        }
     }
 
     public int getState() {

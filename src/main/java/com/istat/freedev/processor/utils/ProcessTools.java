@@ -18,7 +18,7 @@ public class ProcessTools {
         Runnable complete = new Runnable() {
             @Override
             public void run() {
-                listener.onCompleted(process, process.isSuccess());
+                listener.onCompleted(process, process.getResult(), process.isSuccess());
             }
         };
         Runnable success = new Runnable() {
