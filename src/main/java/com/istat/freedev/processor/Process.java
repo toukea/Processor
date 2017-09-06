@@ -373,6 +373,18 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
+    protected final void notifyProcessPartialSuccess(Result result) {
+        if (!geopardise) {
+            this.state = WHEN_SUCCESS;
+            this.result = result;
+            for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
+                executionListener.onSuccess(this, result);
+            }
+            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_SUCCESS);
+            executeWhen(runnableList);
+            onSucceed(result);
+        }
+    }
 
     protected final void notifyProcessSuccess(Result result) {
         if (!geopardise) {
