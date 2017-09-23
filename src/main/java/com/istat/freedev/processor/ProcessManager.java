@@ -41,7 +41,7 @@ public final class ProcessManager {
             process.setId(id);
         }
         process.execute(this, vars);
-        notifyProcessStarted(process, vars);
+ //       notifyProcessStarted(process/*, vars*/);
         return process;
     }
 
@@ -298,22 +298,22 @@ public final class ProcessManager {
         return id;
     }
 
-    private void notifyProcessStarted(final Process process, Object[] vars) {
+    void notifyProcessStarted(final Process process/*, Object[] vars*/) {
         String id = process.getId();
         setPID(id, process);
         for (ProcessListener listener : processListeners) {
             listener.onProcessStarted(process, id);
         }
-        process.runWhen(new Runnable() {
-            @Override
-            public void run() {
-                notifyProcessCompleted(process);
-            }
-        }, Process.WHEN_ANYWAY);
+//        process.runWhen(new Runnable() {
+//            @Override
+//            public void run() {
+//                notifyProcessCompleted(process);
+//            }
+//        }, Process.WHEN_ANYWAY);
     }
 
 
-    private void notifyProcessCompleted(Process process) {
+    void notifyProcessCompleted(Process process) {
         globalProcessQueue.remove(process.getId());
         processQueue.remove(process.getId());
         for (ProcessListener listener : processListeners) {

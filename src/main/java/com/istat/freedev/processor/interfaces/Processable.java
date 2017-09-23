@@ -1,47 +1,19 @@
-package com.istat.freedev.processor;
+package com.istat.freedev.processor.interfaces;
 
 import android.text.TextUtils;
 
-import com.istat.freedev.processor.interfaces.ProcessCallback;
-import com.istat.freedev.processor.utils.ProcessTools;
+import com.istat.freedev.processor.Process;
+import com.istat.freedev.processor.ProcessManager;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
- * Created by istat on 04/10/16.
+ * Created by istat on 23/09/17.
  */
 
-public abstract class Process<Result, Error extends Throwable> {
-    public final static int FLAG_SYS_DEFAUlT = 0;
-    public final static int FLAG_SYS_CANCELABLE = 1;
-    public final static int FLAG_USER_CANCELABLE = 1;
-    public final static int FLAG_BACKGROUND = 2;
-    public final static int FLAG_DETACHED = 3;
-    int flag;
-    public final static int WHEN_SUCCESS = 0, WHEN_ERROR = 1, WHEN_FAIL = 2, WHEN_ANYWAY = 3, WHEN_ABORTED = 4, WHEN_STARTED = 5;
-    Result result;
-    Error error;
-    Throwable exception;
-    String id;
-    final ConcurrentLinkedQueue<ProcessCallback<Result, Error>> processCallbacks = new ConcurrentLinkedQueue<ProcessCallback<Result, Error>>();
-    private long startingTime = -1, completionTime = -1;
-    private Object[] executionVariableArray = new Object[0];
-    ProcessManager manager;
-    int state;
-    boolean canceled;
-
-    public ProcessManager getManager() {
-        return manager;
-    }
-
-    public void setFlag(int flag) {
-        this.flag = flag;
-    }
+public interface Processable<Result, Error extends Throwable> {
+    ProcessManager getManager();
 
     public void addProcessCallback(ProcessCallback<Result, Error> executionListener) {
         if (executionListener != null) {
@@ -49,8 +21,8 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-    public ExecutionVariables getExecutionVariables() {
-        return new ExecutionVariables();
+    public Process.ExecutionVariables getExecutionVariables() {
+        return new Process.ExecutionVariables();
     }
 
     public <T> T getExecutionVariable(int index) {
@@ -84,7 +56,7 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-    protected abstract void onExecute(ExecutionVariables executionVariables);
+    protected abstract void onExecute(Process.ExecutionVariables executionVariables);
 
     protected abstract void onResume();
 
@@ -276,11 +248,11 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
 
-    public <T extends Process> T sendWhen(final MessageCarrier message, int... when) {
+    public <T extends Process> T sendWhen(final Process.MessageCarrier message, int... when) {
         return sendWhen(message, new Object[0], when);
     }
 
-    public <T extends Process> T sendWhen(final MessageCarrier carrier, final Object[] messages, int... when) {
+    public <T extends Process> T sendWhen(final Process.MessageCarrier carrier, final Object[] messages, int... when) {
         for (int value : when) {
             addFuture(new Runnable() {
                 @Override
@@ -364,11 +336,8 @@ public abstract class Process<Result, Error extends Throwable> {
 
     }
 
-    protected final void notifyProcessStarted() {
+    protected void notifyProcessStarted() {
         if (!geopardise) {
-            if (this.manager != null) {
-                this.manager.notifyProcessStarted(this/*, getExecutionVariables().asArray()*/);
-            }
             this.state = WHEN_STARTED;
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                 executionListener.onStart(this);
@@ -380,9 +349,6 @@ public abstract class Process<Result, Error extends Throwable> {
 
     final void notifyProcessCompleted(boolean state) {
         if (!geopardise) {
-            if (this.manager != null) {
-                this.manager.notifyProcessCompleted(this);
-            }
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                 executionListener.onCompleted(this, this.result, state);
             }
@@ -502,139 +468,11 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-    protected final void notifyDelayedProcessSuccess(final Result result, int delay) {
-        if (delay <= 0) {
-            notifyProcessSuccess(result);
-        } else {
-            manager.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    notifyProcessSuccess(result);
-                }
-            }, delay);
-        }
-    }
+    boolean hasError();
 
-    public boolean hasError() {
-        return error != null;
-    }
+    boolean isFailed();
 
-    public boolean isFailed() {
-        return exception != null;
-    }
+    boolean isSuccess();
 
-    public boolean isSuccess() {
-        return !hasError() && !isFailed();
-    }
-
-    public void attach(ProcessCallback<Result, Error> callback) {
-        ProcessTools.attachToProcessCycle(this, callback);
-    }
-
-    public int removeAllExecutionCallback() {
-        int callbackCount = processCallbacks.size();
-        processCallbacks.clear();
-        return callbackCount;
-    }
-
-    public boolean removeProcessCallback(ProcessCallback callback) {
-        boolean removed = processCallbacks.contains(callback);
-        if (removed) {
-            processCallbacks.remove(callback);
-        }
-        return removed;
-    }
-
-    public boolean cancelWhen(Runnable runnable) {
-        Iterator<Integer> iterator = runnableTask.keySet().iterator();
-        while (iterator.hasNext()) {
-            Integer when = iterator.next();
-            ConcurrentLinkedQueue<Runnable> runnables = runnableTask.get(when);
-            if (runnables != null) {
-                boolean removed = runnables.contains(runnable);
-                if (removed) {
-                    runnables.remove(runnable);
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    public boolean cancelWhen(int When) {
-        boolean removed = runnableTask.contains(When);
-        runnableTask.remove(When);
-        return removed;
-    }
-
-    public abstract static class MessageCarrier {
-        List<Object> messages;
-        Process process;
-
-        void handleMessage(Object... messages) {
-            Collections.addAll(this.messages, messages);
-            onHandleMessage(process, messages);
-        }
-
-        public abstract void onHandleMessage(Process process, Object... messages);
-
-        public List<Object> getMessages() {
-            return messages;
-        }
-    }
-
-    public class ExecutionVariables {
-        public int getCount() {
-            return executionVariableArray.length;
-        }
-
-        public Object[] asArray() {
-            return executionVariableArray;
-        }
-
-        public List<?> asList() {
-            return Arrays.asList(executionVariableArray);
-        }
-
-        public <T> T getVariable(int index) {
-            if (executionVariableArray.length <= index) {
-                return null;
-            }
-            try {
-                return (T) executionVariableArray[index];
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-        public boolean isVarInstanceOf(int index, Class<?> cLass) {
-            Object var = getVariable(index);
-            return var != null && cLass != null && cLass.isAssignableFrom(var.getClass());
-        }
-
-        public <T> T getVariable(int index, Class<T> cLass) throws ArrayIndexOutOfBoundsException, IllegalAccessException {
-            if (executionVariableArray.length <= index) {
-                throw new ArrayIndexOutOfBoundsException("executionVariables length=" + executionVariableArray.length + ", requested index=" + index
-                );
-            }
-            Object var = executionVariableArray[index];
-            if (var == null) {
-                return null;
-            }
-            if (cLass.isAssignableFrom(var.getClass())) {
-                return (T) var;
-            } else {
-                throw new IllegalArgumentException("Item at index=" + index + " has type class=" + var.getClass() + ", requested class=" + cLass);
-            }
-        }
-
-        public int length() {
-            return executionVariableArray.length;
-        }
-    }
-
-    public int getState() {
-        return state;
-    }
+    int getState();
 }

@@ -12,12 +12,12 @@ import com.istat.freedev.processor.interfaces.ProcessListener;
 public class ProcessUnit {
     Processor processor;
 
-    protected ProcessUnit() {
-        String nameSpace = this.getClass().getCanonicalName()+":"+System.currentTimeMillis();
+    public ProcessUnit() {
+        String nameSpace = this.getClass().getCanonicalName() + ":" + System.currentTimeMillis();
         processor = Processor.from(nameSpace);
     }
 
-    protected ProcessUnit(String nameSpace) {
+    public ProcessUnit(String nameSpace) {
         processor = Processor.from(nameSpace);
     }
 
