@@ -44,7 +44,7 @@ public interface ProcessCallback<Result, Error extends Throwable> {
      * @param process
      * @param e       the exception that cause the process failed
      */
-    void onFail(Process<Result, Error> process, Exception e);
+    void onFail(Process<Result, Error> process, Throwable e);
 
     /**
      * called when the process has been aborted.
