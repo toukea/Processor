@@ -1,5 +1,7 @@
 package com.istat.freedev.processor.utils;
 
+import android.os.Handler;
+
 import com.istat.freedev.processor.ProcessManager;
 import com.istat.freedev.processor.Processor;
 import com.istat.freedev.processor.Process;
@@ -13,12 +15,15 @@ public class ProcessUnit {
     Processor processor;
 
     public ProcessUnit() {
-        String nameSpace = this.getClass().getCanonicalName() + ":" + System.currentTimeMillis();
-        processor = Processor.from(nameSpace);
+        this("ProcessUnit:" + System.currentTimeMillis(), null);
     }
 
     public ProcessUnit(String nameSpace) {
-        processor = Processor.from(nameSpace);
+        this(nameSpace, null);
+    }
+
+    public ProcessUnit(String nameSpace, Handler handler) {
+        processor = Processor.from(nameSpace, handler);
     }
 
     public Processor getProcessor() {
@@ -38,7 +43,6 @@ public class ProcessUnit {
     }
 
     public ProcessUnit registerProcessListener(ProcessListener listener) {
-
         getProcessManager().registerProcessListener(listener);
         return this;
     }

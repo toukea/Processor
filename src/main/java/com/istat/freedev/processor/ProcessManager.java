@@ -41,7 +41,7 @@ public final class ProcessManager {
             process.setId(id);
         }
         process.execute(this, vars);
- //       notifyProcessStarted(process/*, vars*/);
+        //       notifyStarted(process/*, vars*/);
         return process;
     }
 
@@ -112,7 +112,11 @@ public final class ProcessManager {
     }
 
     ProcessManager() {
+        this(null);
+    }
 
+    ProcessManager(Handler handler) {
+        this.mHandler = handler != null ? handler : new Handler(Looper.getMainLooper());
     }
 
     /**
@@ -307,7 +311,7 @@ public final class ProcessManager {
 //        process.runWhen(new Runnable() {
 //            @Override
 //            public void run() {
-//                notifyProcessCompleted(process);
+//                notifyCompleted(process);
 //            }
 //        }, Process.WHEN_ANYWAY);
     }
@@ -343,9 +347,9 @@ public final class ProcessManager {
         }
     }
 
-    private final Handler mHandler = new Handler(Looper.getMainLooper());
+    private final Handler mHandler;
 
-    public final void runOnUIThread(Runnable runnable) {
+    public final void post(Runnable runnable) {
         mHandler.post(runnable);
 
     }

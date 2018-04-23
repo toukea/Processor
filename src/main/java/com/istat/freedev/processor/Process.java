@@ -28,7 +28,7 @@ public abstract class Process<Result, Error extends Throwable> {
     Error error;
     Throwable exception;
     String id;
-    final ConcurrentLinkedQueue<ProcessCallback<Result, Error>> processCallbacks = new ConcurrentLinkedQueue<ProcessCallback<Result, Error>>();
+    final ConcurrentLinkedQueue<ProcessCallback<Result, Error>> processCallbacks = new ConcurrentLinkedQueue();
     private long startingTime = -1, completionTime = -1;
     private Object[] executionVariableArray = new Object[0];
     ProcessManager manager;
@@ -65,10 +65,10 @@ public abstract class Process<Result, Error extends Throwable> {
             startingTime = System.currentTimeMillis();
 //            memoryRunnableTask.putAll(runnableTask);
             onExecute(getExecutionVariables());
-            notifyProcessStarted();
+            notifyStarted();
         } catch (Exception e) {
-            notifyProcessStarted();
-            notifyProcessFailed(e);
+            notifyStarted();
+            notifyFailed(e);
         }
     }
 
@@ -79,8 +79,8 @@ public abstract class Process<Result, Error extends Throwable> {
         try {
             onExecute(getExecutionVariables());
         } catch (Exception e) {
-            notifyProcessStarted();
-            notifyProcessFailed(e);
+            notifyStarted();
+            notifyFailed(e);
         }
     }
 
@@ -198,11 +198,11 @@ public abstract class Process<Result, Error extends Throwable> {
             }
             cancel();
         }
-        final Object[] executionVars = this.executionVariableArray;
+//        final Object[] executionVars = this.executionVariableArray;
         getManager().postDelayed(new Runnable() {
             @Override
             public void run() {
-//                execute(Process.this.manager, executionVars);
+//                execute(Process.getManager(), executionVars);
                 reset();
             }
         }, TIME_MILLISEC_WAIT_FOR_RESTART);
@@ -218,6 +218,7 @@ public abstract class Process<Result, Error extends Throwable> {
         boolean running = isRunning();
         if (running) {
             canceled = true;
+            notifyAborted();
             onCancel();
         }
         return running;
@@ -263,7 +264,7 @@ public abstract class Process<Result, Error extends Throwable> {
 
     final ConcurrentLinkedQueue<Runnable> executedRunnable = new ConcurrentLinkedQueue<Runnable>();
     //    final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>> memoryRunnableTask = new ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>>();
-    final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>> runnableTask = new ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>>();
+    final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>> runnableTask = new ConcurrentHashMap();
 
     public <T extends Process> T runWhen(Runnable runnable, int... when) {
 //        if(!isRunning()){
@@ -276,11 +277,11 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
 
-    public <T extends Process> T sendWhen(final MessageCarrier message, int... when) {
-        return sendWhen(message, new Object[0], when);
+    public <T extends Process> T sendMessage(final MessageCarrier message, int... when) {
+        return sendMessage(message, new Object[0], when);
     }
 
-    public <T extends Process> T sendWhen(final MessageCarrier carrier, final Object[] messages, int... when) {
+    public <T extends Process> T sendMessage(final MessageCarrier carrier, final Object[] messages, int... when) {
         for (int value : when) {
             addFuture(new Runnable() {
                 @Override
@@ -297,7 +298,7 @@ public abstract class Process<Result, Error extends Throwable> {
         if (!isFutureContain(runnable, conditionTime)) {
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(conditionTime);
             if (runnableList == null) {
-                runnableList = new ConcurrentLinkedQueue<Runnable>();
+                runnableList = new ConcurrentLinkedQueue();
             }
             runnableList.add(runnable);
             runnableTask.put(conditionTime, runnableList);
@@ -364,24 +365,30 @@ public abstract class Process<Result, Error extends Throwable> {
 
     }
 
-    protected final void notifyProcessStarted() {
+    final void notifyStarted() {
         if (!geopardise) {
-            if (this.manager != null) {
-                this.manager.notifyProcessStarted(this/*, getExecutionVariables().asArray()*/);
-            }
-            this.state = WHEN_STARTED;
-            for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                executionListener.onStart(this);
-            }
-            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_STARTED);
-            executeWhen(runnableList);
+            Process.this.state = WHEN_STARTED;
+            post(new Runnable() {
+                @Override
+                public void run() {
+                    if (getManager() != null) {
+                        getManager().notifyProcessStarted(Process.this/*, getExecutionVariables().asArray()*/);
+                    }
+                    for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
+                        executionListener.onStart(Process.this);
+                    }
+                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_STARTED);
+                    executeWhen(runnableList);
+                }
+            });
+
         }
     }
 
-    final void notifyProcessCompleted(boolean state) {
+    final void notifyCompleted(boolean state) {
         if (!geopardise) {
-            if (this.manager != null) {
-                this.manager.notifyProcessCompleted(this);
+            if (getManager() != null) {
+                getManager().notifyProcessCompleted(this);
             }
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                 executionListener.onCompleted(this, this.result, state);
@@ -393,123 +400,145 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-    protected final void notifyProcessPartialSuccess(Result result) {
+    protected final void notifySuccess(final Result result) {
         if (!geopardise) {
             this.state = WHEN_SUCCESS;
             this.result = result;
-            for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                executionListener.onSuccess(this, result);
-            }
-            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_SUCCESS);
-            executeWhen(runnableList);
-            onSucceed(result);
+            post(new Runnable() {
+                @Override
+                public void run() {
+                    for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
+                        executionListener.onSuccess(Process.this, result);
+                    }
+                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_SUCCESS);
+                    executeWhen(runnableList);
+                    onSucceed(result);
+                }
+            });
         }
     }
 
-    protected final void notifyProcessSuccess(Result result) {
+    protected final void notifySucceed(final Result result) {
         if (!geopardise) {
             this.state = WHEN_SUCCESS;
             this.result = result;
-            notifyProcessCompleted(true);
-            for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                executionListener.onSuccess(this, result);
-            }
-            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_SUCCESS);
-            executeWhen(runnableList);
-            onSucceed(result);
+            post(new Runnable() {
+                @Override
+                public void run() {
+                    notifyCompleted(true);
+                    for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
+                        executionListener.onSuccess(Process.this, result);
+                    }
+                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_SUCCESS);
+                    executeWhen(runnableList);
+                    onSucceed(result);
+                }
+            });
         }
     }
 
-    protected final void notifyProcessError(Error error) {
+    protected final void notifyError(final Error error) {
         if (!geopardise) {
             this.state = WHEN_ERROR;
             this.error = error;
-            notifyProcessCompleted(false);
-            for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                executionListener.onError(this, error);
-            }
-            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ERROR);
-            executeWhen(runnableList);
-            onError(error);
+            post(new Runnable() {
+                @Override
+                public void run() {
+                    notifyCompleted(false);
+                    for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
+                        executionListener.onError(Process.this, error);
+                    }
+                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ERROR);
+                    executeWhen(runnableList);
+                    onError(error);
+                }
+            });
         }
     }
 
-
-    protected final void notifyProcessFailed(Throwable e) {
+    protected final void notifyFailed(final Throwable e) {
         if (!geopardise) {
             this.state = WHEN_FAIL;
             this.exception = e;
-            notifyProcessCompleted(false);
-            for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                executionListener.onFail(this, e);
-            }
-            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_FAIL);
-            executeWhen(runnableList);
-            onFailed(e);
+            post(new Runnable() {
+                @Override
+                public void run() {
+                    notifyCompleted(false);
+                    for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
+                        executionListener.onFail(Process.this, e);
+                    }
+                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_FAIL);
+                    executeWhen(runnableList);
+                    onFailed(e);
+                }
+            });
         }
     }
 
-
-    protected final void notifyProcessAborted() {
+    protected final void notifyAborted() {
         if (!geopardise) {
             this.state = WHEN_ABORTED;
-            for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                executionListener.onAborted(this);
-            }
-            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ABORTED);
-            executeWhen(runnableList);
-            onAborted();
+            post(new Runnable() {
+                @Override
+                public void run() {
+                    for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
+                        executionListener.onAborted(Process.this);
+                    }
+                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(WHEN_ABORTED);
+                    executeWhen(runnableList);
+                    onAborted();
+                }
+            });
         }
     }
 
-
-    protected final void notifyDelayedProcessAborted(int delay) {
+    protected final void notifyDelayedAborted(int delay) {
         if (delay <= 0) {
-            notifyProcessAborted();
+            notifyAborted();
         } else {
             manager.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    notifyProcessAborted();
+                    notifyAborted();
                 }
             }, delay);
         }
     }
 
-    protected final void notifyDelayedProcessFailed(final Exception e, int delay) {
+    protected final void notifyDelayedFailed(final Exception e, int delay) {
         if (delay <= 0) {
-            notifyProcessFailed(e);
+            notifyFailed(e);
         } else {
             manager.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    notifyProcessFailed(e);
+                    notifyFailed(e);
                 }
             }, delay);
         }
     }
 
-    protected final void notifyDelayedProcessError(final Error error, int delay) {
+    protected final void notifyDelayedError(final Error error, int delay) {
         if (delay <= 0) {
-            notifyProcessError(error);
+            notifyError(error);
         } else {
             manager.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    notifyProcessError(error);
+                    notifyError(error);
                 }
             }, delay);
         }
     }
 
-    protected final void notifyDelayedProcessSuccess(final Result result, int delay) {
+    protected final void notifyDelayedSuccess(final Result result, int delay) {
         if (delay <= 0) {
-            notifyProcessSuccess(result);
+            notifySucceed(result);
         } else {
             manager.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    notifyProcessSuccess(result);
+                    notifySucceed(result);
                 }
             }, delay);
         }
@@ -537,7 +566,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return callbackCount;
     }
 
-    public boolean removeProcessCallback(ProcessCallback callback) {
+    public boolean removeCallback(ProcessCallback callback) {
         boolean removed = processCallbacks.contains(callback);
         if (removed) {
             processCallbacks.remove(callback);
@@ -613,7 +642,7 @@ public abstract class Process<Result, Error extends Throwable> {
             return var != null && cLass != null && cLass.isAssignableFrom(var.getClass());
         }
 
-        public <T> T getVariable(int index, Class<T> cLass) throws ArrayIndexOutOfBoundsException, IllegalAccessException {
+        public <T> T getVariable(int index, Class<T> cLass) throws ArrayIndexOutOfBoundsException {
             if (executionVariableArray.length <= index) {
                 throw new ArrayIndexOutOfBoundsException("executionVariables length=" + executionVariableArray.length + ", requested index=" + index
                 );
@@ -636,5 +665,9 @@ public abstract class Process<Result, Error extends Throwable> {
 
     public int getState() {
         return state;
+    }
+
+    protected void post(Runnable runnable) {
+        getManager().post(runnable);
     }
 }

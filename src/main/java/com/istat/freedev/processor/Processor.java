@@ -1,5 +1,7 @@
 package com.istat.freedev.processor;
 
+import android.os.Handler;
+
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -15,7 +17,7 @@ public class Processor {
         }
     };
     final static ProcessManager defaultProcessManager = new ProcessManager();
-    final ProcessManager processManager = new ProcessManager();
+    final ProcessManager processManager;
     String nameSpace;
 
     public final static ProcessManager getDefaultProcessManager() {
@@ -27,17 +29,34 @@ public class Processor {
     }
 
     Processor(String nameSpace) {
+        this(nameSpace, null);
+    }
+
+    Processor(String nameSpace, Handler handler) {
         this.nameSpace = nameSpace;
+        this.processManager = new ProcessManager(handler);
     }
 
     public final static Processor from(String processorTag) {
+        return from(processorTag, null);
+    }
+
+    public final static Processor from(String processorTag, Handler defaultHandler) {
         if (processorQueue.contains(processorTag)) {
             return processorQueue.get(processorTag);
         }
-        Processor processor = new Processor(processorTag);
+        Processor processor = new Processor(processorTag, defaultHandler);
         processorQueue.put(processorTag, processor);
         return processor;
     }
+
+    public final static Processor get(String processorTag) {
+        if (processorQueue.contains(processorTag)) {
+            return processorQueue.get(processorTag);
+        }
+        return null;
+    }
+
 
     public final Process execute(Process process, Object... vars) {
         return getProcessManager().execute(process, vars);
@@ -81,7 +100,14 @@ public class Processor {
     }
 
     public final static ProcessManager getProcessManager(String processorTag) {
-        return Processor.from(processorTag).getProcessManager();
+        Processor processor = null;
+        if (processorQueue.contains(processorTag)) {
+            processor = processorQueue.get(processorTag);
+        }
+        if (processor != null) {
+            return processor.getProcessManager();
+        }
+        return null;
     }
 
     public final boolean hasWork() {
