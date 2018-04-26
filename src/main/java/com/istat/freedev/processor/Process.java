@@ -224,6 +224,10 @@ public abstract class Process<Result, Error extends Throwable> {
         return running;
     }
 
+    public final boolean compromise() {
+        return compromiseWhen();
+    }
+
     public final boolean compromiseWhen(int... when) {
         boolean running = isRunning();
         if (when != null || when.length == 0) {
@@ -274,6 +278,64 @@ public abstract class Process<Result, Error extends Throwable> {
             addFuture(runnable, value);
         }
         return (T) this;
+    }
+
+    public <T extends Process> T then(final PromiseCallback<Result> promise) {
+//        if(!isRunning()){
+//            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any runWhen or promise");
+//        }
+        addFuture(new Runnable() {
+            @Override
+            public void run() {
+                promise.onPromise(getResult());
+            }
+        }, WHEN_SUCCESS);
+        return (T) this;
+    }
+
+    public <T extends Process> T error(final PromiseCallback<Error> promise) {
+//        if(!isRunning()){
+//            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any runWhen or promise");
+//        }
+        addFuture(new Runnable() {
+            @Override
+            public void run() {
+                promise.onPromise(getError());
+            }
+        }, WHEN_ERROR);
+        return (T) this;
+    }
+
+    public <T extends Process> T failed(final PromiseCallback<Throwable> promise) {
+//        if(!isRunning()){
+//            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any runWhen or promise");
+//        }
+        addFuture(new Runnable() {
+            @Override
+            public void run() {
+                promise.onPromise(getFailCause());
+            }
+        }, WHEN_FAIL);
+        return (T) this;
+    }
+
+    public <T extends Process> T thrOw(final PromiseCallback<Throwable> promise) {
+//        if(!isRunning()){
+//            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any runWhen or promise");
+//        }
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                promise.onPromise(getFailCause() != null ? getFailCause() : getError());
+            }
+        };
+        addFuture(runnable, WHEN_FAIL);
+        addFuture(runnable, WHEN_ERROR);
+        return (T) this;
+    }
+
+    public interface PromiseCallback<T> {
+        void onPromise(T data);
     }
 
 
@@ -661,6 +723,7 @@ public abstract class Process<Result, Error extends Throwable> {
         public int length() {
             return executionVariableArray.length;
         }
+
     }
 
     public int getState() {
