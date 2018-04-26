@@ -226,7 +226,7 @@ public final class ProcessManager {
     }
 
     /**
-     * switch a Running Process id, from an older to a new PID.
+     * switch a Running Process id, boot an older to a new PID.
      *
      * @param initialPID initial running process ID
      * @param updatePID  new Process ID to set.
@@ -308,12 +308,12 @@ public final class ProcessManager {
         for (ProcessListener listener : processListeners) {
             listener.onProcessStarted(process, id);
         }
-//        process.runWhen(new Runnable() {
+//        process.promise(new Runnable() {
 //            @Override
 //            public void run() {
 //                notifyCompleted(process);
 //            }
-//        }, Process.WHEN_ANYWAY);
+//        }, Process.PROMISE_WHEN_ANYWAY);
     }
 
 
@@ -335,6 +335,10 @@ public final class ProcessManager {
 
     public final static int getGlobalRunningProcessCount() {
         return globalProcessQueue.size();
+    }
+
+    public Handler getHandler() {
+        return mHandler;
     }
 
     public static class ProcessException extends Exception {

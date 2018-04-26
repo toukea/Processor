@@ -37,15 +37,22 @@ public class Processor {
         this.processManager = new ProcessManager(handler);
     }
 
-    public final static Processor from(String processorTag) {
-        return from(processorTag, null);
+    public Handler getHandler() {
+        return getProcessManager().getHandler();
     }
 
-    public final static Processor from(String processorTag, Handler defaultHandler) {
+    public final static Processor boot(String processorTag) {
+        return boot(processorTag, null);
+    }
+
+    public final static Processor boot(String processorTag, Handler handler) {
         if (processorQueue.contains(processorTag)) {
-            return processorQueue.get(processorTag);
+            Processor processor = processorQueue.get(processorTag);
+            if (processor.getHandler() == handler) {
+                return processor;
+            }
         }
-        Processor processor = new Processor(processorTag, defaultHandler);
+        Processor processor = new Processor(processorTag, handler);
         processorQueue.put(processorTag, processor);
         return processor;
     }

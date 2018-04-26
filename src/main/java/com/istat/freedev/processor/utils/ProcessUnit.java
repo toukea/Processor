@@ -23,7 +23,7 @@ public class ProcessUnit {
     }
 
     public ProcessUnit(String nameSpace, Handler handler) {
-        processor = Processor.from(nameSpace, handler);
+        processor = Processor.boot(nameSpace, handler);
     }
 
     public Processor getProcessor() {

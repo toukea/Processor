@@ -45,11 +45,11 @@ public class ProcessTools {
                 listener.onAborted(process);
             }
         };
-        process.runWhen(start, Process.WHEN_STARTED);
-        process.runWhen(complete, Process.WHEN_ANYWAY);
-        process.runWhen(success, Process.WHEN_SUCCESS);
-        process.runWhen(error, Process.WHEN_ERROR);
-        process.runWhen(fail, Process.WHEN_FAIL);
-        process.runWhen(aborted, Process.WHEN_ABORTED);
+        process.promise(start, Process.PROMISE_WHEN_STARTED);
+        process.promise(complete, Process.PROMISE_WHEN_ANYWAY);
+        process.promise(success, Process.PROMISE_WHEN_SUCCESS);
+        process.promise(error, Process.PROMISE_WHEN_ERROR);
+        process.promise(fail, Process.PROMISE_WHEN_FAIL);
+        process.promise(aborted, Process.PROMISE_WHEN_ABORTED);
     }
 }

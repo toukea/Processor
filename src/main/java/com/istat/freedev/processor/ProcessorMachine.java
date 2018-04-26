@@ -16,7 +16,9 @@ public class ProcessorMachine {
     };
     ConcurrentHashMap<String, Processor> processorCluster = new ConcurrentHashMap<String, Processor>() {
         {
-            put(DEFAULT_PROCESSOR_TAG, Processor.from(Processor.DEFAULT_PROCESSOR_TAG));
+            put(DEFAULT_PROCESSOR_TAG, Processor.get(Processor.DEFAULT_PROCESSOR_TAG) != null ?
+                    Processor.get(Processor.DEFAULT_PROCESSOR_TAG) :
+                    Processor.boot(Processor.DEFAULT_PROCESSOR_TAG));
         }
     };
     String name;
