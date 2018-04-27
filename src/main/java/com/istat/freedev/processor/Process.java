@@ -48,7 +48,7 @@ public abstract class Process<Result, Error extends Throwable> {
         this.flag = flag;
     }
 
-    public void addProcessCallback(ProcessCallback<Result, Error> executionListener) {
+    public void addCallback(ProcessCallback<Result, Error> executionListener) {
         if (executionListener != null) {
             this.processCallbacks.add(executionListener);
         }
@@ -223,8 +223,8 @@ public abstract class Process<Result, Error extends Throwable> {
         boolean running = isRunning();
         if (running) {
             canceled = true;
-            notifyAborted();
             onCancel();
+            notifyAborted();
         }
         return running;
     }
@@ -326,18 +326,37 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
-    public <T extends Process> T thrOw(final PromiseCallback<Throwable> promise) {
+    public <T extends Process> T thrOws(final PromiseCallback<Throwable> promise) {
 //        if(!isRunning()){
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
 //        }
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                promise.onPromise(getFailCause() != null ? getFailCause() : getError());
+                Throwable error = getFailCause() != null ? getFailCause() : getError();
+//                if (error == null) {
+//                    error = new InterruptedException("Process has been canceled");
+//                }
+                promise.onPromise(error);
             }
         };
         addFuture(runnable, PROMISE_WHEN_FAIL);
         addFuture(runnable, PROMISE_WHEN_ERROR);
+//        addFuture(runnable, PROMISE_WHEN_ABORTED);
+        return (T) this;
+    }
+
+    public <T extends Process> T abortion(final PromiseCallback<Void> promise) {
+//        if(!isRunning()){
+//            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
+//        }
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                promise.onPromise(null);
+            }
+        };
+        addFuture(runnable, PROMISE_WHEN_ABORTED);
         return (T) this;
     }
 
@@ -434,6 +453,10 @@ public abstract class Process<Result, Error extends Throwable> {
 
     }
 
+    protected void onFinished() {
+
+    }
+
     final void notifyStarted() {
         if (!geopardise) {
             Process.this.state = PROMISE_WHEN_STARTED;
@@ -444,7 +467,7 @@ public abstract class Process<Result, Error extends Throwable> {
                         getManager().notifyProcessStarted(Process.this/*, getExecutionVariables().asArray()*/);
                     }
                     for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                        executionListener.onStart(Process.this);
+                        executionListener.onStart(/*Process.this*/);
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(PROMISE_WHEN_STARTED);
                     executeWhen(runnableList);
@@ -460,30 +483,13 @@ public abstract class Process<Result, Error extends Throwable> {
                 getManager().notifyProcessCompleted(this);
             }
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                executionListener.onCompleted(this, this.result, state);
+                executionListener.onCompleted(/*this,*/ this.result, state);
             }
             executedRunnable.clear();
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(PROMISE_WHEN_ANYWAY);
             executeWhen(runnableList);
             onCompleted(state, result, error);
-        }
-    }
-
-    protected final void notifySuccess(final Result result) {
-        if (!geopardise) {
-            this.state = PROMISE_WHEN_SUCCESS;
-            this.result = result;
-            post(new Runnable() {
-                @Override
-                public void run() {
-                    for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                        executionListener.onSuccess(Process.this, result);
-                    }
-                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(PROMISE_WHEN_SUCCESS);
-                    executeWhen(runnableList);
-                    onSucceed(result);
-                }
-            });
+            onFinished();
         }
     }
 
@@ -496,7 +502,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 public void run() {
                     notifyCompleted(true);
                     for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                        executionListener.onSuccess(Process.this, result);
+                        executionListener.onSuccess(/*Process.this,*/ result);
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(PROMISE_WHEN_SUCCESS);
                     executeWhen(runnableList);
@@ -515,7 +521,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 public void run() {
                     notifyCompleted(false);
                     for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                        executionListener.onError(Process.this, error);
+                        executionListener.onError(/*Process.this, */error);
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(PROMISE_WHEN_ERROR);
                     executeWhen(runnableList);
@@ -534,7 +540,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 public void run() {
                     notifyCompleted(false);
                     for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                        executionListener.onFail(Process.this, e);
+                        executionListener.onFail(/*Process.this,*/ e);
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(PROMISE_WHEN_FAIL);
                     executeWhen(runnableList);
@@ -551,11 +557,12 @@ public abstract class Process<Result, Error extends Throwable> {
                 @Override
                 public void run() {
                     for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                        executionListener.onAborted(Process.this);
+                        executionListener.onAborted(/*Process.this*/);
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(PROMISE_WHEN_ABORTED);
                     executeWhen(runnableList);
                     onAborted();
+                    onFinished();
                 }
             });
         }
@@ -621,7 +628,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return exception != null;
     }
 
-    public boolean isSuccess() {
+    public boolean hasSucceed() {
         return !hasError() && !isFailed();
     }
 
@@ -629,13 +636,13 @@ public abstract class Process<Result, Error extends Throwable> {
         ProcessTools.attachToProcessCycle(this, callback);
     }
 
-    public int removeAllExecutionCallback() {
+    public int cancelAllCallback() {
         int callbackCount = processCallbacks.size();
         processCallbacks.clear();
         return callbackCount;
     }
 
-    public boolean removeCallback(ProcessCallback callback) {
+    public boolean cancelCallback(ProcessCallback callback) {
         boolean removed = processCallbacks.contains(callback);
         if (removed) {
             processCallbacks.remove(callback);
@@ -643,7 +650,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return removed;
     }
 
-    public boolean cancelWhen(Runnable runnable) {
+    public boolean compromise(Runnable runnable) {
         Iterator<Integer> iterator = runnableTask.keySet().iterator();
         while (iterator.hasNext()) {
             Integer when = iterator.next();
@@ -719,6 +726,66 @@ public abstract class Process<Result, Error extends Throwable> {
             } else {
                 throw new IllegalArgumentException("Item at index=" + index + " has type class=" + var.getClass() + ", requested class=" + cLass);
             }
+        }
+
+        public String getStringVariable(int index) throws ArrayIndexOutOfBoundsException {
+            if (executionVariableArray.length <= index) {
+                throw new ArrayIndexOutOfBoundsException("executionVariables length=" + executionVariableArray.length + ", requested index=" + index
+                );
+            }
+            Object var = executionVariableArray[index];
+            if (var == null) {
+                return null;
+            }
+            return String.valueOf(var);
+        }
+
+        public int getIntVariable(int index) throws ArrayIndexOutOfBoundsException {
+            if (executionVariableArray.length <= index) {
+                throw new ArrayIndexOutOfBoundsException("executionVariables length=" + executionVariableArray.length + ", requested index=" + index
+                );
+            }
+            Object var = executionVariableArray[index];
+            if (var == null) {
+                return 0;
+            }
+            return Integer.valueOf(String.valueOf(var));
+        }
+
+        public long getLongVariable(int index) throws ArrayIndexOutOfBoundsException {
+            if (executionVariableArray.length <= index) {
+                throw new ArrayIndexOutOfBoundsException("executionVariables length=" + executionVariableArray.length + ", requested index=" + index
+                );
+            }
+            Object var = executionVariableArray[index];
+            if (var == null) {
+                return 0;
+            }
+            return Long.valueOf(String.valueOf(var));
+        }
+
+        public float getFloatVariable(int index) throws ArrayIndexOutOfBoundsException {
+            if (executionVariableArray.length <= index) {
+                throw new ArrayIndexOutOfBoundsException("executionVariables length=" + executionVariableArray.length + ", requested index=" + index
+                );
+            }
+            Object var = executionVariableArray[index];
+            if (var == null) {
+                return 0;
+            }
+            return Float.valueOf(String.valueOf(var));
+        }
+
+        public double getDoubleVariable(int index) throws ArrayIndexOutOfBoundsException {
+            if (executionVariableArray.length <= index) {
+                throw new ArrayIndexOutOfBoundsException("executionVariables length=" + executionVariableArray.length + ", requested index=" + index
+                );
+            }
+            Object var = executionVariableArray[index];
+            if (var == null) {
+                return 0;
+            }
+            return Double.valueOf(String.valueOf(var));
         }
 
         public int length() {

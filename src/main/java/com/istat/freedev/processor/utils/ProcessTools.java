@@ -12,37 +12,37 @@ public class ProcessTools {
         Runnable start = new Runnable() {
             @Override
             public void run() {
-                listener.onStart(process);
+                listener.onStart(/*process*/);
             }
         };
         Runnable complete = new Runnable() {
             @Override
             public void run() {
-                listener.onCompleted(process, process.getResult(), process.isSuccess());
+                listener.onCompleted(/*process, */process.getResult(), process.hasSucceed());
             }
         };
         Runnable success = new Runnable() {
             @Override
             public void run() {
-                listener.onSuccess(process, process.getResult());
+                listener.onSuccess(/*process,*/ process.getResult());
             }
         };
         Runnable error = new Runnable() {
             @Override
             public void run() {
-                listener.onError(process, process.getError());
+                listener.onError(/*process, */process.getError());
             }
         };
         Runnable fail = new Runnable() {
             @Override
             public void run() {
-                listener.onFail(process, process.getFailCause());
+                listener.onFail(/*process,*/ process.getFailCause());
             }
         };
         Runnable aborted = new Runnable() {
             @Override
             public void run() {
-                listener.onAborted(process);
+                listener.onAborted(/*process*/);
             }
         };
         process.promise(start, Process.PROMISE_WHEN_STARTED);
