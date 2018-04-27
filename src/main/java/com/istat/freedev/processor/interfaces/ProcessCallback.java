@@ -1,7 +1,5 @@
 package com.istat.freedev.processor.interfaces;
 
-import com.istat.freedev.processor.Process;
-
 /**
  * Created by istat on 14/10/16.
  */
@@ -15,9 +13,9 @@ public interface ProcessCallback<Result, Error extends Throwable> {
     /**
      * called when process is completed
      *
-     * @param success state if process succeed.
+     * @param finishState state if process succeed.
      */
-    void onCompleted(/*Process<Result, Error> process,*/ Result result,boolean success);
+    void onFinished(/*Process<Result, Error> process,*/ Result result, int finishState);
 
     /**
      * called when the process succeed

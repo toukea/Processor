@@ -15,10 +15,10 @@ public class ProcessTools {
                 listener.onStart(/*process*/);
             }
         };
-        Runnable complete = new Runnable() {
+        Runnable finish = new Runnable() {
             @Override
             public void run() {
-                listener.onCompleted(/*process, */process.getResult(), process.hasSucceed());
+                listener.onFinished(/*process, */process.getResult(), process.getState());
             }
         };
         Runnable success = new Runnable() {
@@ -45,11 +45,11 @@ public class ProcessTools {
                 listener.onAborted(/*process*/);
             }
         };
-        process.promise(start, Process.PROMISE_WHEN_STARTED);
-        process.promise(complete, Process.PROMISE_WHEN_ANYWAY);
-        process.promise(success, Process.PROMISE_WHEN_SUCCESS);
-        process.promise(error, Process.PROMISE_WHEN_ERROR);
-        process.promise(fail, Process.PROMISE_WHEN_FAIL);
-        process.promise(aborted, Process.PROMISE_WHEN_ABORTED);
+        process.promise(start, Process.STATE_STARTING);
+        process.promise(finish, Process.STATE_FINISHED);
+        process.promise(success, Process.STATE_SUCCESS);
+        process.promise(error, Process.STATE_ERROR);
+        process.promise(fail, Process.STATE_FAILED);
+        process.promise(aborted, Process.STATE_ABORTED);
     }
 }

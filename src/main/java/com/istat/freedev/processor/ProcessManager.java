@@ -311,9 +311,9 @@ public final class ProcessManager {
 //        process.promise(new Runnable() {
 //            @Override
 //            public void run() {
-//                notifyCompleted(process);
+//                notifyFinished(process);
 //            }
-//        }, Process.PROMISE_WHEN_ANYWAY);
+//        }, Process.STATE_FINISHED);
     }
 
 

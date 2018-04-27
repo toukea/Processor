@@ -23,12 +23,12 @@ public abstract class Process<Result, Error extends Throwable> {
     public final static int FLAG_BACKGROUND = 2;
     public final static int FLAG_DETACHED = 3;
     int flag;
-    public final static int PROMISE_WHEN_SUCCESS = 0,
-            PROMISE_WHEN_ERROR = 1,
-            PROMISE_WHEN_FAIL = 2,
-            PROMISE_WHEN_ANYWAY = 3,
-            PROMISE_WHEN_ABORTED = 4,
-            PROMISE_WHEN_STARTED = 5;
+    public final static int STATE_SUCCESS = 0,
+            STATE_ERROR = 1,
+            STATE_FAILED = 2,
+            STATE_FINISHED = 3,
+            STATE_ABORTED = 4,
+            STATE_STARTING = 5;
     Result result;
     Error error;
     Throwable exception;
@@ -238,7 +238,7 @@ public abstract class Process<Result, Error extends Throwable> {
     public final boolean compromise(int... when) {
         boolean running = isRunning();
         if (when == null || when.length == 0) {
-            when = new int[]{PROMISE_WHEN_ABORTED, PROMISE_WHEN_ANYWAY, PROMISE_WHEN_ERROR, PROMISE_WHEN_FAIL, PROMISE_WHEN_STARTED, PROMISE_WHEN_SUCCESS};
+            when = new int[]{STATE_ABORTED, STATE_FINISHED, STATE_ERROR, STATE_FAILED, STATE_STARTING, STATE_SUCCESS};
         }
         for (int i : when) {
             if (runnableTask.containsKey(i)) {
@@ -277,6 +277,17 @@ public abstract class Process<Result, Error extends Throwable> {
     //    final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>> memoryRunnableTask = new ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>>();
     final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>> runnableTask = new ConcurrentHashMap();
 
+    public <T extends Process> T promise(final PromiseCallback<Process> callback, int... when) {
+        return promise(new Runnable() {
+            @Override
+            public void run() {
+                if (callback != null) {
+                    callback.onPromise(Process.this);
+                }
+            }
+        }, when);
+    }
+
     public <T extends Process> T promise(Runnable runnable, int... when) {
 //        if(!isRunning()){
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
@@ -296,7 +307,7 @@ public abstract class Process<Result, Error extends Throwable> {
             public void run() {
                 promise.onPromise(getResult());
             }
-        }, PROMISE_WHEN_SUCCESS);
+        }, STATE_SUCCESS);
         return (T) this;
     }
 
@@ -309,7 +320,7 @@ public abstract class Process<Result, Error extends Throwable> {
             public void run() {
                 promise.onPromise(getError());
             }
-        }, PROMISE_WHEN_ERROR);
+        }, STATE_ERROR);
         return (T) this;
     }
 
@@ -322,7 +333,7 @@ public abstract class Process<Result, Error extends Throwable> {
             public void run() {
                 promise.onPromise(getFailCause());
             }
-        }, PROMISE_WHEN_FAIL);
+        }, STATE_FAILED);
         return (T) this;
     }
 
@@ -340,9 +351,9 @@ public abstract class Process<Result, Error extends Throwable> {
                 promise.onPromise(error);
             }
         };
-        addFuture(runnable, PROMISE_WHEN_FAIL);
-        addFuture(runnable, PROMISE_WHEN_ERROR);
-//        addFuture(runnable, PROMISE_WHEN_ABORTED);
+        addFuture(runnable, STATE_FAILED);
+        addFuture(runnable, STATE_ERROR);
+//        addFuture(runnable, STATE_ABORTED);
         return (T) this;
     }
 
@@ -356,7 +367,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 promise.onPromise(null);
             }
         };
-        addFuture(runnable, PROMISE_WHEN_ABORTED);
+        addFuture(runnable, STATE_ABORTED);
         return (T) this;
     }
 
@@ -433,7 +444,7 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-    protected void onCompleted(boolean state, Result result, Error error) {
+    protected void onFinished(int state, Result result, Error error) {
 
     }
 
@@ -453,13 +464,9 @@ public abstract class Process<Result, Error extends Throwable> {
 
     }
 
-    protected void onFinished() {
-
-    }
-
     final void notifyStarted() {
         if (!geopardise) {
-            Process.this.state = PROMISE_WHEN_STARTED;
+            Process.this.state = STATE_STARTING;
             post(new Runnable() {
                 @Override
                 public void run() {
@@ -469,7 +476,7 @@ public abstract class Process<Result, Error extends Throwable> {
                     for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                         executionListener.onStart(/*Process.this*/);
                     }
-                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(PROMISE_WHEN_STARTED);
+                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_STARTING);
                     executeWhen(runnableList);
                 }
             });
@@ -477,34 +484,34 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-    final void notifyCompleted(boolean state) {
+    final void notifyFinished(int state) {
         if (!geopardise) {
             if (getManager() != null) {
                 getManager().notifyProcessCompleted(this);
             }
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                executionListener.onCompleted(/*this,*/ this.result, state);
+                executionListener.onFinished(/*this,*/ this.result, state);
             }
             executedRunnable.clear();
-            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(PROMISE_WHEN_ANYWAY);
+            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_FINISHED);
             executeWhen(runnableList);
-            onCompleted(state, result, error);
-            onFinished();
+            this.state = state;
+            onFinished(state, result, error);
         }
     }
 
     protected final void notifySucceed(final Result result) {
         if (!geopardise) {
-            this.state = PROMISE_WHEN_SUCCESS;
+            this.state = STATE_SUCCESS;
             this.result = result;
             post(new Runnable() {
                 @Override
                 public void run() {
-                    notifyCompleted(true);
+                    notifyFinished(STATE_SUCCESS);
                     for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                         executionListener.onSuccess(/*Process.this,*/ result);
                     }
-                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(PROMISE_WHEN_SUCCESS);
+                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_SUCCESS);
                     executeWhen(runnableList);
                     onSucceed(result);
                 }
@@ -514,16 +521,16 @@ public abstract class Process<Result, Error extends Throwable> {
 
     protected final void notifyError(final Error error) {
         if (!geopardise) {
-            this.state = PROMISE_WHEN_ERROR;
+            this.state = STATE_ERROR;
             this.error = error;
             post(new Runnable() {
                 @Override
                 public void run() {
-                    notifyCompleted(false);
+                    notifyFinished(STATE_ERROR);
                     for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                         executionListener.onError(/*Process.this, */error);
                     }
-                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(PROMISE_WHEN_ERROR);
+                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_ERROR);
                     executeWhen(runnableList);
                     onError(error);
                 }
@@ -533,16 +540,16 @@ public abstract class Process<Result, Error extends Throwable> {
 
     protected final void notifyFailed(final Throwable e) {
         if (!geopardise) {
-            this.state = PROMISE_WHEN_FAIL;
+            this.state = STATE_FAILED;
             this.exception = e;
             post(new Runnable() {
                 @Override
                 public void run() {
-                    notifyCompleted(false);
+                    notifyFinished(STATE_FAILED);
                     for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                         executionListener.onFail(/*Process.this,*/ e);
                     }
-                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(PROMISE_WHEN_FAIL);
+                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_FAILED);
                     executeWhen(runnableList);
                     onFailed(e);
                 }
@@ -552,17 +559,17 @@ public abstract class Process<Result, Error extends Throwable> {
 
     protected final void notifyAborted() {
         if (!geopardise) {
-            this.state = PROMISE_WHEN_ABORTED;
+            this.state = STATE_ABORTED;
             post(new Runnable() {
                 @Override
                 public void run() {
+                    notifyFinished(STATE_ABORTED);
                     for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                         executionListener.onAborted(/*Process.this*/);
                     }
-                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(PROMISE_WHEN_ABORTED);
+                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_ABORTED);
                     executeWhen(runnableList);
                     onAborted();
-                    onFinished();
                 }
             });
         }
