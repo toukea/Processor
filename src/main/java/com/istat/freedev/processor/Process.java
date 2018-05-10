@@ -371,6 +371,17 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
+    public <T extends Process> T finish(final PromiseCallback<Boolean> promise) {
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                promise.onPromise(hasSucceed());
+            }
+        };
+        addFuture(runnable, STATE_FINISHED);
+        return (T) this;
+    }
+
     public interface PromiseCallback<T> {
         void onPromise(T data);
     }
@@ -799,6 +810,21 @@ public abstract class Process<Result, Error extends Throwable> {
             return executionVariableArray.length;
         }
 
+        public boolean isEmpty() {
+            return length() == 0;
+        }
+
+        public boolean getBooleanVariable(int index) {
+            if (executionVariableArray.length <= index) {
+                throw new ArrayIndexOutOfBoundsException("executionVariables length=" + executionVariableArray.length + ", requested index=" + index
+                );
+            }
+            Object var = executionVariableArray[index];
+            if (var == null) {
+                return false;
+            }
+            return Boolean.valueOf(String.valueOf(String.valueOf(var)));
+        }
     }
 
     public int getState() {
