@@ -489,6 +489,7 @@ public abstract class Process<Result, Error extends Throwable> {
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_STARTING);
                     executeWhen(runnableList);
+                    onStateChanged(state);
                 }
             });
 
@@ -497,8 +498,9 @@ public abstract class Process<Result, Error extends Throwable> {
 
     final void notifyFinished(int state) {
         if (!geopardise) {
+            this.state = state;
             if (getManager() != null) {
-                getManager().notifyProcessCompleted(this);
+                getManager().notifyProcessFinished(this);
             }
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                 executionListener.onFinished(/*this,*/ this.result, state);
@@ -506,7 +508,7 @@ public abstract class Process<Result, Error extends Throwable> {
             executedRunnable.clear();
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_FINISHED);
             executeWhen(runnableList);
-            this.state = state;
+            onStateChanged(state);
             onFinished(state, result, error);
         }
     }
@@ -524,10 +526,30 @@ public abstract class Process<Result, Error extends Throwable> {
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_SUCCESS);
                     executeWhen(runnableList);
+                    onStateChanged(state);
                     onSucceed(result);
                 }
             });
         }
+    }
+
+    protected final void notifyCustomState(final int state) {
+        if (!geopardise) {
+            this.state = state;
+            post(new Runnable() {
+                @Override
+                public void run() {
+                    if (getManager() != null) {
+                        getManager().notifyProcessStateChanged(Process.this);
+                    }
+                    onStateChanged(state);
+                }
+            });
+        }
+    }
+
+    protected void onStateChanged(int state) {
+
     }
 
     protected final void notifyError(final Error error) {
@@ -543,6 +565,7 @@ public abstract class Process<Result, Error extends Throwable> {
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_ERROR);
                     executeWhen(runnableList);
+                    onStateChanged(state);
                     onError(error);
                 }
             });
@@ -562,6 +585,7 @@ public abstract class Process<Result, Error extends Throwable> {
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_FAILED);
                     executeWhen(runnableList);
+                    onStateChanged(state);
                     onFailed(e);
                 }
             });
@@ -580,6 +604,7 @@ public abstract class Process<Result, Error extends Throwable> {
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_ABORTED);
                     executeWhen(runnableList);
+                    onStateChanged(state);
                     onAborted();
                 }
             });

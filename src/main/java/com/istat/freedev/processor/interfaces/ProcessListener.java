@@ -9,6 +9,8 @@ import com.istat.freedev.processor.Process;
 public interface ProcessListener {
     void onProcessStarted(Process process, String id);
 
-    void onProcessCompleted(Process process, String id);
+    void onProcessStateChanged(Process process, String id, int state);
+
+    void onProcessFinished(Process process, String id);
 
 }

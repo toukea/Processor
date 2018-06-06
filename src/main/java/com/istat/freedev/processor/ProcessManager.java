@@ -306,18 +306,13 @@ public final class ProcessManager {
         String id = process.getId();
         setPID(id, process);
         for (ProcessListener listener : processListeners) {
+            listener.onProcessStateChanged(process, id, process.getState());
             listener.onProcessStarted(process, id);
         }
-//        process.promise(new Runnable() {
-//            @Override
-//            public void run() {
-//                notifyFinished(process);
-//            }
-//        }, Process.STATE_FINISHED);
     }
 
 
-    void notifyProcessCompleted(Process process) {
+    void notifyProcessFinished(Process process) {
         globalProcessQueue.remove(process.getId());
         processQueue.remove(process.getId());
         for (ProcessListener listener : processListeners) {
@@ -325,7 +320,18 @@ public final class ProcessManager {
             if (process != null) {
                 processId = process.getId();
             }
-            listener.onProcessCompleted(process, processId);
+            listener.onProcessStateChanged(process, processId, process.getState());
+            listener.onProcessFinished(process, processId);
+        }
+    }
+
+    void notifyProcessStateChanged(Process process) {
+        for (ProcessListener listener : processListeners) {
+            String processId = "";
+            if (process != null) {
+                processId = process.getId();
+            }
+            listener.onProcessStateChanged(process, processId, process.getState());
         }
     }
 
