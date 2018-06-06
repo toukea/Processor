@@ -337,7 +337,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
-    public <T extends Process> T thrOws(final PromiseCallback<Throwable> promise) {
+    public <T extends Process> T catchs(final PromiseCallback<Throwable> promise) {
 //        if(!isRunning()){
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
 //        }
