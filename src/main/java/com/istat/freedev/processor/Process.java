@@ -40,6 +40,7 @@ public abstract class Process<Result, Error extends Throwable> {
     ProcessManager manager;
     int state;
     boolean canceled;
+    boolean running = false;
 
     public ProcessManager getManager() {
         return manager;
@@ -102,11 +103,11 @@ public abstract class Process<Result, Error extends Throwable> {
     protected abstract void onCancel();
 
     public boolean isRunning() {
-        return !isCompleted() && !isCanceled() && state != STATE_ABORTED;
+        return running;
     }
 
     public boolean isCompleted() {
-        return state == STATE_FAILED || state == STATE_ERROR || state == STATE_SUCCESS;
+        return !running && !canceled;
     }
 
     public abstract boolean isPaused();
@@ -484,6 +485,7 @@ public abstract class Process<Result, Error extends Throwable> {
     final void notifyStarted() {
         if (!geopardise) {
             Process.this.state = STATE_STARTING;
+            this.running = true;
             post(new Runnable() {
                 @Override
                 public void run() {
@@ -505,6 +507,7 @@ public abstract class Process<Result, Error extends Throwable> {
     final void notifyFinished(int state) {
         if (!geopardise) {
             this.state = state;
+            this.running = false;
             if (getManager() != null) {
                 getManager().notifyProcessFinished(this);
             }
