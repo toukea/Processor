@@ -15,7 +15,7 @@ public interface ProcessCallback<Result, Error extends Throwable> {
      *
      * @param finishState state if process succeed.
      */
-    void onFinished(/*Process<Result, Error> process,*/ Result result, int finishState);
+    void onFinished(/*Process<Result, Error> process, Result result,*/ int finishState);
 
     /**
      * called when the process succeed

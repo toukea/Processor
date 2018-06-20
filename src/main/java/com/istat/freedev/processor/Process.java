@@ -28,7 +28,8 @@ public abstract class Process<Result, Error extends Throwable> {
             STATE_FAILED = 2,
             STATE_FINISHED = 3,
             STATE_ABORTED = 4,
-            STATE_STARTING = 5;
+            STATE_STARTING = 5,
+            STATE_RUNNING = 6;
     Result result;
     Error error;
     Throwable exception;
@@ -71,6 +72,7 @@ public abstract class Process<Result, Error extends Throwable> {
 //            memoryRunnableTask.putAll(runnableTask);
             onExecute(getExecutionVariables());
             notifyStarted();
+            notifyCustomState(STATE_RUNNING, false);
         } catch (Exception e) {
             notifyStarted();
             notifyFailed(e);
@@ -99,9 +101,13 @@ public abstract class Process<Result, Error extends Throwable> {
 
     protected abstract void onCancel();
 
-    public abstract boolean isRunning();
+    public boolean isRunning() {
+        return !isCompleted() && !isCanceled() && state != STATE_ABORTED;
+    }
 
-    public abstract boolean isCompleted();
+    public boolean isCompleted() {
+        return state == STATE_FAILED || state == STATE_ERROR || state == STATE_SUCCESS;
+    }
 
     public abstract boolean isPaused();
 
@@ -298,7 +304,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
-    public <T extends Process> T then(final PromiseCallback<Result> promise) {
+    public <T extends Process<Result, Error>> T then(final PromiseCallback<Result> promise) {
 //        if(!isRunning()){
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
 //        }
@@ -324,7 +330,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
-    public <T extends Process> T failed(final PromiseCallback<Throwable> promise) {
+    public <T extends Process<Result, Error>> T failed(final PromiseCallback<Throwable> promise) {
 //        if(!isRunning()){
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
 //        }
@@ -337,7 +343,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
-    public <T extends Process> T catchs(final PromiseCallback<Throwable> promise) {
+    public <T extends Process<Result, Error>> T catchs(final PromiseCallback<Throwable> promise) {
 //        if(!isRunning()){
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
 //        }
@@ -357,7 +363,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
-    public <T extends Process> T abortion(final PromiseCallback<Void> promise) {
+    public <T extends Process<Result, Error>> T abortion(final PromiseCallback<Void> promise) {
 //        if(!isRunning()){
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
 //        }
@@ -371,7 +377,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
-    public <T extends Process> T finish(final PromiseCallback<Boolean> promise) {
+    public <T extends Process<Result, Error>> T finish(final PromiseCallback<Boolean> promise) {
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
@@ -387,11 +393,11 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
 
-    public <T extends Process> T sendMessage(final MessageCarrier message, int... when) {
+    public <T extends Process<Result, Error>> T sendMessage(final MessageCarrier message, int... when) {
         return sendMessage(message, new Object[0], when);
     }
 
-    public <T extends Process> T sendMessage(final MessageCarrier carrier, final Object[] messages, int... when) {
+    public <T extends Process<Result, Error>> T sendMessage(final MessageCarrier carrier, final Object[] messages, int... when) {
         for (int value : when) {
             addFuture(new Runnable() {
                 @Override
@@ -503,7 +509,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 getManager().notifyProcessFinished(this);
             }
             for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
-                executionListener.onFinished(/*this,*/ this.result, state);
+                executionListener.onFinished(/*this, this.result,*/ state);
             }
             executedRunnable.clear();
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_FINISHED);
@@ -533,15 +539,20 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-    protected final void notifyCustomState(final int state) {
+    protected final void notifyCustomState(final int state, final boolean finished) {
         if (!geopardise) {
             this.state = state;
             post(new Runnable() {
                 @Override
                 public void run() {
+                    if (finished) {
+                        notifyFinished(state);
+                    }
                     if (getManager() != null) {
                         getManager().notifyProcessStateChanged(Process.this);
                     }
+                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(state);
+                    executeWhen(runnableList);
                     onStateChanged(state);
                 }
             });
