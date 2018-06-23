@@ -35,7 +35,7 @@ public abstract class Process<Result, Error extends Throwable> {
     Throwable exception;
     String id;
     final ConcurrentLinkedQueue<ProcessCallback<Result, Error>> processCallbacks = new ConcurrentLinkedQueue();
-    private long startingTime = -1, completionTime = -1;
+    private long startingTime = -1, finishTime = -1;
     private Object[] executionVariableArray = new Object[0];
     ProcessManager manager;
     int state;
@@ -92,7 +92,7 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-    protected abstract void onExecute(ExecutionVariables executionVariables);
+    protected abstract void onExecute(ExecutionVariables executionVariables) throws Exception;
 
     protected abstract void onResume();
 
@@ -227,7 +227,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     public final boolean cancel() {
-        boolean running = isRunning();
+        running = isRunning();
         if (running) {
             canceled = true;
             onCancel();
@@ -378,11 +378,11 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
-    public <T extends Process<Result, Error>> T finish(final PromiseCallback<Boolean> promise) {
+    public <T extends Process<Result, Error>> T finish(final PromiseCallback<Integer> promise) {
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                promise.onPromise(hasSucceed());
+                promise.onPromise(getState());
             }
         };
         addFuture(runnable, STATE_FINISHED);
@@ -430,18 +430,18 @@ public abstract class Process<Result, Error extends Throwable> {
         return runnableList.contains(run);
     }
 
-    public final long getStartingTime() throws ProcessManager.ProcessException {
-        if (startingTime < 0) {
-            throw new ProcessManager.ProcessException("Oups, it seem than this process is not yet started.");
-        }
+    public final long getStartingTime() {
+//        if (startingTime < 0) {
+//            throw new ProcessManager.ProcessException("Oups, it seem than this process is not yet started.");
+//        }
         return startingTime;
     }
 
-    public final long getCompletionTime() throws ProcessManager.ProcessException {
-        if (completionTime < 0) {
-            throw new ProcessManager.ProcessException("Oups, it seem than this process is not yet completed.");
-        }
-        return completionTime;
+    public final long getFinishTime() {
+//        if (finishTime < 0) {
+//            throw new ProcessManager.ProcessException("Oups, it seem than this process is not yet completed.");
+//        }
+        return finishTime;
     }
 
     public final long getLinvingTime() {
@@ -451,7 +451,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return System.currentTimeMillis() - startingTime;
     }
 
-    private void executeWhen(ConcurrentLinkedQueue<Runnable> runnableList) {
+    private void executePromises(ConcurrentLinkedQueue<Runnable> runnableList) {
         if (!geopardise && runnableList != null && runnableList.size() > 0) {
             for (Runnable runnable : runnableList) {
                 if (!executedRunnable.contains(runnable)) {
@@ -496,7 +496,7 @@ public abstract class Process<Result, Error extends Throwable> {
                         executionListener.onStart(/*Process.this*/);
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_STARTING);
-                    executeWhen(runnableList);
+                    executePromises(runnableList);
                     onStateChanged(state);
                 }
             });
@@ -516,8 +516,9 @@ public abstract class Process<Result, Error extends Throwable> {
             }
             executedRunnable.clear();
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_FINISHED);
-            executeWhen(runnableList);
+            executePromises(runnableList);
             onStateChanged(state);
+            this.finishTime = System.currentTimeMillis();
             onFinished(state, result, error);
         }
     }
@@ -534,7 +535,7 @@ public abstract class Process<Result, Error extends Throwable> {
                         executionListener.onSuccess(/*Process.this,*/ result);
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_SUCCESS);
-                    executeWhen(runnableList);
+                    executePromises(runnableList);
                     onStateChanged(state);
                     onSucceed(result);
                 }
@@ -555,7 +556,7 @@ public abstract class Process<Result, Error extends Throwable> {
                         getManager().notifyProcessStateChanged(Process.this);
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(state);
-                    executeWhen(runnableList);
+                    executePromises(runnableList);
                     onStateChanged(state);
                 }
             });
@@ -578,7 +579,7 @@ public abstract class Process<Result, Error extends Throwable> {
                         executionListener.onError(/*Process.this, */error);
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_ERROR);
-                    executeWhen(runnableList);
+                    executePromises(runnableList);
                     onStateChanged(state);
                     onError(error);
                 }
@@ -598,7 +599,7 @@ public abstract class Process<Result, Error extends Throwable> {
                         executionListener.onFail(/*Process.this,*/ e);
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_FAILED);
-                    executeWhen(runnableList);
+                    executePromises(runnableList);
                     onStateChanged(state);
                     onFailed(e);
                 }
@@ -617,7 +618,7 @@ public abstract class Process<Result, Error extends Throwable> {
                         executionListener.onAborted(/*Process.this*/);
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_ABORTED);
-                    executeWhen(runnableList);
+                    executePromises(runnableList);
                     onStateChanged(state);
                     onAborted();
                 }
@@ -686,7 +687,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     public boolean hasSucceed() {
-        return !hasError() && !isFailed();
+        return !hasError() && !isFailed() && !isCanceled();
     }
 
     public void attach(ProcessCallback<Result, Error> callback) {
