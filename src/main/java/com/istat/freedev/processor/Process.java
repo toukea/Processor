@@ -56,6 +56,14 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
+    public boolean removeCallback(ProcessCallback executionListener) {
+        return this.processCallbacks.remove(executionListener);
+    }
+
+    public void removeCallbacks() {
+        this.processCallbacks.clear();
+    }
+
     public ExecutionVariables getExecutionVariables() {
         return new ExecutionVariables();
     }
@@ -71,9 +79,9 @@ public abstract class Process<Result, Error extends Throwable> {
             this.executionVariableArray = vars;
             startingTime = System.currentTimeMillis();
 //            memoryRunnableTask.putAll(runnableTask);
-            onExecute(getExecutionVariables());
             notifyStarted();
-            notifyCustomState(STATE_RUNNING, false);
+            onExecute(getExecutionVariables());
+            dispatchState(STATE_RUNNING, false);
         } catch (Exception e) {
             notifyStarted();
             notifyFailed(e);
@@ -233,6 +241,7 @@ public abstract class Process<Result, Error extends Throwable> {
             onCancel();
             notifyAborted();
         }
+        this.processCallbacks.clear();
         return running;
     }
 
@@ -543,7 +552,11 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-    protected final void notifyCustomState(final int state, final boolean finished) {
+    protected final void dispatchState(int state) {
+        dispatchState(state, false);
+    }
+
+    protected final void dispatchState(final int state, final boolean finished) {
         if (!geopardise) {
             this.state = state;
             post(new Runnable() {
@@ -873,5 +886,9 @@ public abstract class Process<Result, Error extends Throwable> {
 
     protected void post(Runnable runnable) {
         getManager().post(runnable);
+    }
+
+    protected void postDelayed(Runnable runnable, long delay) {
+        getManager().postDelayed(runnable, delay);
     }
 }

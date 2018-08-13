@@ -364,7 +364,7 @@ public final class ProcessManager {
 
     }
 
-    public final void postDelayed(Runnable runnable, int delayed) {
+    public final void postDelayed(Runnable runnable, long delayed) {
         mHandler.postDelayed(runnable, delayed);
     }
 }
