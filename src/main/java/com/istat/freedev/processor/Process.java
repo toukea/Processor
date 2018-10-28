@@ -241,6 +241,7 @@ public abstract class Process<Result, Error extends Throwable> {
             onCancel();
             notifyAborted();
         }
+        this.running = false;
         this.processCallbacks.clear();
         return running;
     }
@@ -276,6 +277,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return geopardise;
     }
 
+    //TODO bien réfléchir au comportement de cette method
     public final boolean geopardise() {
         geopardise = true;
         compromise();
