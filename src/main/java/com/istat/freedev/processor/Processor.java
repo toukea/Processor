@@ -32,27 +32,27 @@ public class Processor {
         this(nameSpace, null);
     }
 
-    Processor(String nameSpace, Handler handler) {
+    Processor(String nameSpace, ProcessManager.RunnableDispatcher runnableDispatcher) {
         this.nameSpace = nameSpace;
-        this.processManager = new ProcessManager(handler);
+        this.processManager = new ProcessManager(runnableDispatcher);
     }
 
-    public Handler getHandler() {
-        return getProcessManager().getHandler();
+    public ProcessManager.RunnableDispatcher getDispatcher() {
+        return getProcessManager().getDispatcher();
     }
 
     public final static Processor boot(String processorTag) {
         return boot(processorTag, null);
     }
 
-    public final static Processor boot(String processorTag, Handler handler) {
+    public final static Processor boot(String processorTag, ProcessManager.RunnableDispatcher runnableDispatcher) {
         if (processorQueue.contains(processorTag)) {
             Processor processor = processorQueue.get(processorTag);
-            if (processor.getHandler() == handler) {
+            if (processor.getDispatcher() == runnableDispatcher) {
                 return processor;
             }
         }
-        Processor processor = new Processor(processorTag, handler);
+        Processor processor = new Processor(processorTag, runnableDispatcher);
         processorQueue.put(processorTag, processor);
         return processor;
     }

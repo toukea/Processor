@@ -22,8 +22,8 @@ public class ProcessUnit {
         this(nameSpace, null);
     }
 
-    public ProcessUnit(String nameSpace, Handler handler) {
-        processor = Processor.boot(nameSpace, handler);
+    public ProcessUnit(String nameSpace, ProcessManager.RunnableDispatcher dispatcher) {
+        processor = Processor.boot(nameSpace, dispatcher);
     }
 
     public Processor getProcessor() {

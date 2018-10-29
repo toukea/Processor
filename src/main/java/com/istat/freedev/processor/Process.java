@@ -890,7 +890,7 @@ public abstract class Process<Result, Error extends Throwable> {
         getManager().post(runnable);
     }
 
-    protected void postDelayed(Runnable runnable, long delay) {
+    protected void postDelayed(Runnable runnable, int delay) {
         getManager().postDelayed(runnable, delay);
     }
 }

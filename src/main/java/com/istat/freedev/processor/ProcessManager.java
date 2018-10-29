@@ -102,7 +102,7 @@ public final class ProcessManager {
         while (enumProcess.hasMoreElements()) {
             enumProcess.nextElement().cancel();
         }
-        mHandler.removeCallbacksAndMessages(null);
+        mDispatcher.release();
         return livingProcess;
     }
 
@@ -115,8 +115,8 @@ public final class ProcessManager {
         this(null);
     }
 
-    ProcessManager(Handler handler) {
-        this.mHandler = handler != null ? handler : new Handler(Looper.getMainLooper());
+    ProcessManager(RunnableDispatcher dispatcher) {
+        this.mDispatcher = dispatcher != null ? dispatcher : getDefaultRunnableDispatcher();
     }
 
     /**
@@ -343,8 +343,8 @@ public final class ProcessManager {
         return globalProcessQueue.size();
     }
 
-    public Handler getHandler() {
-        return mHandler;
+    public RunnableDispatcher getDispatcher() {
+        return mDispatcher;
     }
 
     public static class ProcessException extends Exception {
@@ -357,14 +357,80 @@ public final class ProcessManager {
         }
     }
 
-    private final Handler mHandler;
+    private final RunnableDispatcher mDispatcher;
 
     public final void post(Runnable runnable) {
-        mHandler.post(runnable);
+        mDispatcher.dispatch(runnable, 0);
 
     }
 
-    public final void postDelayed(Runnable runnable, long delayed) {
-        mHandler.postDelayed(runnable, delayed);
+    public final void postDelayed(Runnable runnable, int delayed) {
+        mDispatcher.dispatch(runnable, delayed);
+    }
+
+    public interface RunnableDispatcher {
+        void dispatch(Runnable runnable, int delay);
+
+        void cancel(Runnable runnable);
+
+        void release();
+    }
+
+    public static RunnableDispatcher getDefaultRunnableDispatcher() {
+        if (isAndroidOs()) {
+            return new RunnableDispatcher() {
+                Handler handler = new Handler(Looper.getMainLooper());
+
+                @Override
+                public void dispatch(Runnable runnable, int delay) {
+                    if (runnable != null) {
+                        if (delay <= 0) {
+                            handler.post(runnable);
+                        } else {
+                            handler.postDelayed(runnable, delay);
+                        }
+                    }
+                }
+
+                @Override
+                public void cancel(Runnable runnable) {
+                    handler.removeCallbacks(runnable);
+                }
+
+                @Override
+                public void release() {
+                    handler.removeCallbacksAndMessages(null);
+                }
+            };
+        } else {
+            return new RunnableDispatcher() {
+                @Override
+                public void dispatch(Runnable runnable, int delay) {
+                    if (runnable != null) {
+                        runnable.run();
+                    }
+                }
+
+                @Override
+                public void cancel(Runnable runnable) {
+
+                }
+
+                @Override
+                public void release() {
+
+                }
+            };
+        }
+    }
+
+    private static boolean isAndroidOs() {
+        String osName = System.getProperty("os.name").toLowerCase();
+        if ("linux".equals(osName)) {
+            if (System.getProperty("java.specification.vendor", "linux").toLowerCase().contains("android")) {
+                return true;
+            }
+        }
+        return false;
     }
 }
