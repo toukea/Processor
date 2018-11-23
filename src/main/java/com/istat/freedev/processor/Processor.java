@@ -1,6 +1,6 @@
 package com.istat.freedev.processor;
 
-import android.os.Handler;
+import com.istat.freedev.processor.interfaces.RunnableDispatcher;
 
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,12 +32,12 @@ public class Processor {
         this(nameSpace, null);
     }
 
-    Processor(String nameSpace, ProcessManager.RunnableDispatcher runnableDispatcher) {
+    Processor(String nameSpace, RunnableDispatcher runnableDispatcher) {
         this.nameSpace = nameSpace;
         this.processManager = new ProcessManager(runnableDispatcher);
     }
 
-    public ProcessManager.RunnableDispatcher getDispatcher() {
+    public RunnableDispatcher getDispatcher() {
         return getProcessManager().getDispatcher();
     }
 
@@ -45,7 +45,7 @@ public class Processor {
         return boot(processorTag, null);
     }
 
-    public final static Processor boot(String processorTag, ProcessManager.RunnableDispatcher runnableDispatcher) {
+    public final static Processor boot(String processorTag, RunnableDispatcher runnableDispatcher) {
         if (processorQueue.contains(processorTag)) {
             Processor processor = processorQueue.get(processorTag);
             if (processor.getDispatcher() == runnableDispatcher) {

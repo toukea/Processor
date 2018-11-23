@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 
 public abstract class Process<Result, Error extends Throwable> {
-    public final static int FLAG_SYS_DEFAUlT = 0;
+    public final static int FLAG_SYS_DEFAULT = 0;
     public final static int FLAG_SYS_CANCELABLE = 1;
     public final static int FLAG_USER_CANCELABLE = 1;
     public final static int FLAG_BACKGROUND = 2;

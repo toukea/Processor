@@ -1,11 +1,10 @@
 package com.istat.freedev.processor.utils;
 
-import android.os.Handler;
-
 import com.istat.freedev.processor.ProcessManager;
 import com.istat.freedev.processor.Processor;
 import com.istat.freedev.processor.Process;
 import com.istat.freedev.processor.interfaces.ProcessListener;
+import com.istat.freedev.processor.interfaces.RunnableDispatcher;
 
 /**
  * Created by istat on 07/02/17.
@@ -22,7 +21,7 @@ public class ProcessUnit {
         this(nameSpace, null);
     }
 
-    public ProcessUnit(String nameSpace, ProcessManager.RunnableDispatcher dispatcher) {
+    public ProcessUnit(String nameSpace, RunnableDispatcher dispatcher) {
         processor = Processor.boot(nameSpace, dispatcher);
     }
 

@@ -5,6 +5,7 @@ import android.os.Looper;
 import android.text.TextUtils;
 
 import com.istat.freedev.processor.interfaces.ProcessListener;
+import com.istat.freedev.processor.interfaces.RunnableDispatcher;
 
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -366,14 +367,6 @@ public final class ProcessManager {
 
     public final void postDelayed(Runnable runnable, int delayed) {
         mDispatcher.dispatch(runnable, delayed);
-    }
-
-    public interface RunnableDispatcher {
-        void dispatch(Runnable runnable, int delay);
-
-        void cancel(Runnable runnable);
-
-        void release();
     }
 
     public static RunnableDispatcher getDefaultRunnableDispatcher() {
