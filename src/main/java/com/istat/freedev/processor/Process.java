@@ -4,6 +4,7 @@ import android.text.TextUtils;
 
 import com.istat.freedev.processor.interfaces.ProcessCallback;
 import com.istat.freedev.processor.utils.ProcessTools;
+import com.istat.freedev.processor.utils.Toolkits;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -23,13 +24,16 @@ public abstract class Process<Result, Error extends Throwable> {
     public final static int FLAG_BACKGROUND = 2;
     public final static int FLAG_DETACHED = 3;
     int flag;
-    public final static int STATE_SUCCESS = 0,
+    public final static int
+            STATE_LATENT = -1,
+            STATE_SUCCESS = 0,
             STATE_ERROR = 1,
             STATE_FAILED = 2,
-            STATE_FINISHED = 3,
-            STATE_ABORTED = 4,
-            STATE_STARTING = 5,
-            STATE_RUNNING = 6;
+            STATE_ABORTED = 3,
+            STATE_STARTING = 4,
+            STATE_RUNNING = 5,
+            STATE_DROPPED = 7,
+            STATE_FINISHED = STATE_SUCCESS | STATE_ERROR | STATE_FAILED | STATE_ABORTED | STATE_DROPPED;
     Result result;
     Error error;
     Throwable exception;
@@ -38,12 +42,16 @@ public abstract class Process<Result, Error extends Throwable> {
     private long startingTime = -1, finishTime = -1;
     private Object[] executionVariableArray = new Object[0];
     ProcessManager manager;
-    int state;
+    int state = STATE_LATENT;
     boolean canceled;
     boolean running = false;
 
     public ProcessManager getManager() {
         return manager;
+    }
+
+    public boolean isManaged() {
+        return manager != null;
     }
 
     public void setFlag(int flag) {
@@ -287,7 +295,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     boolean hasId() {
-        return !TextUtils.isEmpty(getId());
+        return !Toolkits.isEmpty(getId());
     }
 
 
@@ -531,6 +539,7 @@ public abstract class Process<Result, Error extends Throwable> {
             onStateChanged(state);
             this.finishTime = System.currentTimeMillis();
             onFinished(state, result, error);
+            this.manager = null;
         }
     }
 
@@ -892,5 +901,11 @@ public abstract class Process<Result, Error extends Throwable> {
 
     protected void postDelayed(Runnable runnable, int delay) {
         getManager().postDelayed(runnable, delay);
+    }
+
+    public String changeId(String newId) throws ProcessManager.ProcessException {
+        String currentId = getId();
+        getManager().setProcessId(newId, this);
+        return currentId;
     }
 }

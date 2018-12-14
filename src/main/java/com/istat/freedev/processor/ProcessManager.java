@@ -6,6 +6,7 @@ import android.text.TextUtils;
 
 import com.istat.freedev.processor.interfaces.ProcessListener;
 import com.istat.freedev.processor.interfaces.RunnableDispatcher;
+import com.istat.freedev.processor.utils.Toolkits;
 
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -18,7 +19,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * Created by istat on 04/10/16.
  */
-
+//TODO thing about ProcessManager.Plugin
 public final class ProcessManager {
     static final ConcurrentHashMap<String, Process> globalProcessQueue = new ConcurrentHashMap<String, Process>();
     final ConcurrentHashMap<String, Process> processQueue = new ConcurrentHashMap<String, Process>();
@@ -32,17 +33,18 @@ public final class ProcessManager {
      * @param vars
      * @return
      */
-    public final <T extends Process> T execute(T process, Object... vars) {
-        String id;
-        if (!process.hasId()) {
+    public synchronized final <T extends Process> T execute(T process, Object... vars) {
+        String id = process.getId();
+        if (Toolkits.isEmpty(id)) {
             id = System.currentTimeMillis() + "";
             while (isRunningPID(id)) {
                 id = generateProcessId();
             }
             process.setId(id);
         }
+        setPID(id, process);
+        //TODO can i add component which can be executed here, befor process is executed?
         process.execute(this, vars);
-        //       notifyStarted(process/*, vars*/);
         return process;
     }
 
@@ -248,12 +250,12 @@ public final class ProcessManager {
             throw new ProcessException("Oups, ConcurrentProcessId a running process is alrady associated to this id=" + updatePID + ". ");
         }
         Process process = processQueue.get(initialPID);
-        process.setId(updatePID);
         setPID(updatePID, process);
         return process;
     }
 
     private void setPID(String id, Process process) {
+        process.setId(id);
         processQueue.put(id, process);
         globalProcessQueue.put(id, process);
     }
@@ -304,11 +306,9 @@ public final class ProcessManager {
     }
 
     void notifyProcessStarted(final Process process/*, Object[] vars*/) {
-        String id = process.getId();
-        setPID(id, process);
         for (ProcessListener listener : processListeners) {
-            listener.onProcessStateChanged(process, id, process.getState());
-            listener.onProcessStarted(process, id);
+            listener.onProcessStateChanged(process, process.getId(), process.getState());
+            listener.onProcessStarted(process, process.getId());
         }
     }
 
