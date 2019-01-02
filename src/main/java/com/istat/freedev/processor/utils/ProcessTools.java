@@ -45,8 +45,8 @@ public class ProcessTools {
                 listener.onAborted(/*process*/);
             }
         };
-        process.promise(start, Process.STATE_STARTING);
-        process.promise(finish, Process.STATE_FINISHED);
+        process.promise(start, Process.STATE_STARTED);
+        process.promise(finish, Process.STATE_FLAG_FINISHED);
         process.promise(success, Process.STATE_SUCCESS);
         process.promise(error, Process.STATE_ERROR);
         process.promise(fail, Process.STATE_FAILED);

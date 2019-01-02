@@ -360,13 +360,20 @@ public final class ProcessManager {
 
     private final RunnableDispatcher mDispatcher;
 
-    public final void post(Runnable runnable) {
+    public final boolean post(Runnable runnable) {
+        if (mDispatcher == null) {
+            return false;
+        }
         mDispatcher.dispatch(runnable, 0);
-
+        return true;
     }
 
-    public final void postDelayed(Runnable runnable, int delayed) {
+    public final boolean postDelayed(Runnable runnable, int delayed) {
+        if (mDispatcher == null) {
+            return false;
+        }
         mDispatcher.dispatch(runnable, delayed);
+        return false;
     }
 
     public static RunnableDispatcher getDefaultRunnableDispatcher() {

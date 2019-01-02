@@ -1,7 +1,5 @@
 package com.istat.freedev.processor;
 
-import android.text.TextUtils;
-
 import com.istat.freedev.processor.interfaces.ProcessCallback;
 import com.istat.freedev.processor.utils.ProcessTools;
 import com.istat.freedev.processor.utils.Toolkits;
@@ -26,14 +24,15 @@ public abstract class Process<Result, Error extends Throwable> {
     int flag;
     public final static int
             STATE_LATENT = -1,
-            STATE_SUCCESS = 0,
-            STATE_ERROR = 1,
-            STATE_FAILED = 2,
-            STATE_ABORTED = 3,
-            STATE_STARTING = 4,
-            STATE_RUNNING = 5,
-            STATE_DROPPED = 7,
-            STATE_FINISHED = STATE_SUCCESS | STATE_ERROR | STATE_FAILED | STATE_ABORTED | STATE_DROPPED;
+            STATE_STARTED = 7,
+            STATE_PROCESSING = 31,
+            STATE_SUCCESS = 255,
+            STATE_ERROR = 127,
+            STATE_FAILED = 111,
+            STATE_ABORTED = 95,
+            STATE_PENDING = 15,
+            STATE_DROPPED = 1,
+            STATE_FLAG_FINISHED = 65;
     Result result;
     Error error;
     Throwable exception;
@@ -89,7 +88,7 @@ public abstract class Process<Result, Error extends Throwable> {
 //            memoryRunnableTask.putAll(runnableTask);
             notifyStarted();
             onExecute(getExecutionVariables());
-            dispatchState(STATE_RUNNING, false);
+            dispatchState(STATE_PROCESSING, false);
         } catch (Exception e) {
             notifyStarted();
             notifyFailed(e);
@@ -263,7 +262,7 @@ public abstract class Process<Result, Error extends Throwable> {
     public final boolean compromise(int... when) {
         boolean running = isRunning();
         if (when == null || when.length == 0) {
-            when = new int[]{STATE_ABORTED, STATE_FINISHED, STATE_ERROR, STATE_FAILED, STATE_STARTING, STATE_SUCCESS};
+            when = new int[]{STATE_ABORTED, STATE_FLAG_FINISHED, STATE_ERROR, STATE_FAILED, STATE_STARTED, STATE_SUCCESS};
         }
         for (int i : when) {
             if (runnableTask.containsKey(i)) {
@@ -404,7 +403,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 promise.onPromise(getState());
             }
         };
-        addFuture(runnable, STATE_FINISHED);
+        addFuture(runnable, STATE_FLAG_FINISHED);
         return (T) this;
     }
 
@@ -503,7 +502,7 @@ public abstract class Process<Result, Error extends Throwable> {
 
     final void notifyStarted() {
         if (!geopardise) {
-            Process.this.state = STATE_STARTING;
+            Process.this.state = STATE_STARTED;
             this.running = true;
             post(new Runnable() {
                 @Override
@@ -514,7 +513,7 @@ public abstract class Process<Result, Error extends Throwable> {
                     for (ProcessCallback<Result, Error> executionListener : processCallbacks) {
                         executionListener.onStart(/*Process.this*/);
                     }
-                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_STARTING);
+                    ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_STARTED);
                     executePromises(runnableList);
                     onStateChanged(state);
                 }
@@ -534,7 +533,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 executionListener.onFinished(/*this, this.result,*/ state);
             }
             executedRunnable.clear();
-            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_FINISHED);
+            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_FLAG_FINISHED);
             executePromises(runnableList);
             onStateChanged(state);
             this.finishTime = System.currentTimeMillis();
@@ -748,6 +747,23 @@ public abstract class Process<Result, Error extends Throwable> {
         return false;
     }
 
+    public void precipitatePromise(int... moments) {
+        try {
+            for (int moment : moments) {
+                ConcurrentLinkedQueue<Runnable> executableFuture = runnableTask.get(moment);
+                if (executableFuture != null && !executableFuture.isEmpty()) {
+                    for (Runnable runnable : executableFuture) {
+                        if (!executedRunnable.contains(runnable)) {
+                            runnable.run();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public abstract static class MessageCarrier {
         List<Object> messages;
         Process process;
@@ -871,7 +887,7 @@ public abstract class Process<Result, Error extends Throwable> {
         }
 
         public int length() {
-            return executionVariableArray.length;
+            return executionVariableArray == null ? 0 : executionVariableArray.length;
         }
 
         public boolean isEmpty() {
@@ -895,17 +911,36 @@ public abstract class Process<Result, Error extends Throwable> {
         return state;
     }
 
-    protected void post(Runnable runnable) {
+    protected boolean post(Runnable runnable) {
+        if (getManager() == null) {
+            return false;
+        }
         getManager().post(runnable);
+        return true;
     }
 
-    protected void postDelayed(Runnable runnable, int delay) {
+    protected boolean postDelayed(Runnable runnable, int delay) {
+        if (getManager() == null) {
+            return false;
+        }
         getManager().postDelayed(runnable, delay);
+        return true;
     }
 
     public String changeId(String newId) throws ProcessManager.ProcessException {
         String currentId = getId();
         getManager().setProcessId(newId, this);
         return currentId;
+    }
+
+    /**
+     * is parameter state included into currentProcess state?
+     *
+     * @param state
+     * @return state is included into current #Process.state
+     */
+    public boolean isStateAsignableTo(int state) {
+        int bitAnd = state & this.state;
+        return state == bitAnd;
     }
 }
