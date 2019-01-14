@@ -25,6 +25,7 @@ public final class ProcessManager {
     final ConcurrentHashMap<String, Process> processQueue = new ConcurrentHashMap<String, Process>();
     final ConcurrentLinkedQueue<ProcessListener> processListeners = new ConcurrentLinkedQueue();
     private static final int SIZE_GENERATED_PID = 16;
+    private final String nameSpace;
 
     /**
      * Execute process with specific execution variables
@@ -115,11 +116,20 @@ public final class ProcessManager {
     }
 
     ProcessManager() {
-        this(null);
+        this(Processor.DEFAULT_PROCESSOR_TAG, null);
     }
 
-    ProcessManager(RunnableDispatcher dispatcher) {
+//    ProcessManager(String nameSpace) {
+//        this(nameSpace, null);
+//    }
+
+    ProcessManager(String nameSpace, RunnableDispatcher dispatcher) {
+        this.nameSpace = nameSpace;
         this.mDispatcher = dispatcher != null ? dispatcher : getDefaultRunnableDispatcher();
+    }
+
+    public String getNameSpace() {
+        return nameSpace;
     }
 
     /**
@@ -376,7 +386,7 @@ public final class ProcessManager {
         return false;
     }
 
-    public static RunnableDispatcher getDefaultRunnableDispatcher() {
+    public final static RunnableDispatcher getDefaultRunnableDispatcher() {
         if (isAndroidOs()) {
             return new RunnableDispatcher() {
                 Handler handler = new Handler(Looper.getMainLooper());

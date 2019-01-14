@@ -34,13 +34,14 @@ public class Processor {
 
     Processor(String nameSpace, RunnableDispatcher runnableDispatcher) {
         this.nameSpace = nameSpace;
-        this.processManager = new ProcessManager(runnableDispatcher);
+        this.processManager = new ProcessManager(nameSpace, runnableDispatcher);
     }
 
     public RunnableDispatcher getDispatcher() {
         return getProcessManager().getDispatcher();
     }
 
+    //TODO si il est possible de trouver un meilleur nom qu eboot
     public final static Processor boot(String processorTag) {
         return boot(processorTag, null);
     }
@@ -69,7 +70,7 @@ public class Processor {
         return getProcessManager().execute(process, vars);
     }
 
-    public final Process execute(String PID, Process process, Object... vars) throws ProcessManager.ProcessException {
+    public final Process execute(String PID, Process process, Object... vars) {
         return getProcessManager().execute(process, PID, vars);
     }
 
