@@ -362,14 +362,14 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
-    public <T extends Process<Result, Error>> T catchs(final PromiseCallback<Throwable> promise) {
+    public <T extends Process<Result, Error>> T catchException(final PromiseCallback<Throwable> promise) {
 //        if(!isRunning()){
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
 //        }
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                Throwable error = getFailCause() != null ? getFailCause() : getError();
+                Throwable error = getException();
 //                if (error == null) {
 //                    error = new InterruptedException("Process has been canceled");
 //                }
@@ -396,15 +396,19 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
-    public <T extends Process<Result, Error>> T finish(final PromiseCallback<Integer> promise) {
+    public <T extends Process<Result, Error>> T finish(final PromiseCallback<Process> promise) {
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                promise.onPromise(getState());
+                promise.onPromise(Process.this);
             }
         };
         addFuture(runnable, STATE_FLAG_FINISHED);
         return (T) this;
+    }
+
+    public Throwable getException() {
+        return getError() != null ? getError() : getFailCause();
     }
 
     public interface PromiseCallback<T> {
