@@ -407,6 +407,15 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
+    public <T extends Process<Result, Error>, Y extends Throwable> T then(final Process<Result, Y> promise) {
+        return then(new PromiseCallback<Result>() {
+            @Override
+            public void onPromise(Result data) {
+                promise.execute(manager, data);
+            }
+        });
+    }
+
     public Throwable getException() {
         return getError() != null ? getError() : getFailCause();
     }
