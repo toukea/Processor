@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * Created by istat on 04/10/16.
  */
 //TODO thing about ProcessManager.Plugin
+//TODO permettre de lancer des Process qui embarque en eux l'execution de plusieurs autre process (avec possibilité de créer des sous ProcessManager dans lequel il tourne ces sous Process)
 public final class ProcessManager {
     static final ConcurrentHashMap<String, Process> globalProcessQueue = new ConcurrentHashMap<String, Process>();
     final ConcurrentHashMap<String, Process> processQueue = new ConcurrentHashMap<String, Process>();
