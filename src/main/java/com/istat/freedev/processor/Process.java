@@ -6,6 +6,7 @@ import com.istat.freedev.processor.utils.Toolkits;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,12 +17,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 
 public abstract class Process<Result, Error extends Throwable> {
-    public final static int FLAG_SYS_DEFAULT = 0;
-    public final static int FLAG_SYS_CANCELABLE = 1;
-    public final static int FLAG_USER_CANCELABLE = 1;
-    public final static int FLAG_BACKGROUND = 2;
-    public final static int FLAG_DETACHED = 3;
-    int flag;
+    public final static int FLAG_DETACHED = 1;
+    public final static int FLAG_DON_NOT_CLEAR_ON_FINISH = 2;
+    public final static int FLAG_NOT_CANCELABLE = 4;
+    int flags;
     public final static int
             STATE_LATENT = -1,
             STATE_STARTED = 7,
@@ -37,6 +36,7 @@ public abstract class Process<Result, Error extends Throwable> {
     Error error;
     Throwable exception;
     String id;
+    final ConcurrentHashMap<PromiseCallback, Runnable> promiseRunnableMap = new ConcurrentHashMap<>();
     final ConcurrentLinkedQueue<ProcessCallback<Result, Error>> processCallbacks = new ConcurrentLinkedQueue();
     private long startingTime = -1, finishTime = -1;
     private Object[] executionVariableArray = new Object[0];
@@ -53,17 +53,34 @@ public abstract class Process<Result, Error extends Throwable> {
         return manager != null;
     }
 
-    public void setFlag(int flag) {
-        this.flag = flag;
+    public void setFlags(int flag) {
+        if (isRunning()) {
+            throw new IllegalStateException("Process is already started");
+        }
+        this.flags = flag;
+    }
+
+    public void addFlags(int flags) {
+        if (isRunning()) {
+            throw new IllegalStateException("Process is already started");
+        }
+        this.flags |= flags;
+    }
+
+    public int getFlags() {
+        return flags;
     }
 
     public void addCallback(ProcessCallback<Result, Error> executionListener) {
-        if (executionListener != null) {
+        if (executionListener != null && executionListener != null) {
             this.processCallbacks.add(executionListener);
         }
     }
 
     public boolean removeCallback(ProcessCallback executionListener) {
+        if (executionListener == null) {
+            return false;
+        }
         return this.processCallbacks.remove(executionListener);
     }
 
@@ -109,13 +126,17 @@ public abstract class Process<Result, Error extends Throwable> {
 
     protected abstract void onExecute(ExecutionVariables executionVariables) throws Exception;
 
-    protected abstract void onResume();
+    protected void onResume() {
+    }
 
-    protected abstract void onPaused();
+    protected void onPaused() {
+    }
 
-    protected abstract void onStopped();
+    protected void onStopped() {
+    }
 
-    protected abstract void onCancel();
+    protected void onCancel() {
+    }
 
     public boolean isRunning() {
         return running;
@@ -125,7 +146,9 @@ public abstract class Process<Result, Error extends Throwable> {
         return !running && !canceled;
     }
 
-    public abstract boolean isPaused();
+    public boolean isPaused() {
+        return false;
+    }
 
     public boolean isCanceled() {
         return canceled;
@@ -242,7 +265,9 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     public final boolean cancel() {
-        running = isRunning();
+        if ((flags & FLAG_NOT_CANCELABLE) == FLAG_NOT_CANCELABLE) {
+            return false;
+        }
         if (running) {
             canceled = true;
             onCancel();
@@ -303,14 +328,20 @@ public abstract class Process<Result, Error extends Throwable> {
     final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>> runnableTask = new ConcurrentHashMap();
 
     public <T extends Process> T promise(final PromiseCallback<Process> callback, int... when) {
-        return promise(new Runnable() {
+        Runnable runnable = new Runnable() {
             @Override
             public void run() {
                 if (callback != null) {
                     callback.onPromise(Process.this);
                 }
             }
-        }, when);
+        };
+        promiseRunnableMap.put(callback, runnable);
+        return promise(runnable, when);
+    }
+
+    private void removeAttachedPromise(Runnable runnable) {
+
     }
 
     public <T extends Process> T promise(Runnable runnable, int... when) {
@@ -551,6 +582,12 @@ public abstract class Process<Result, Error extends Throwable> {
             onStateChanged(state);
             this.finishTime = System.currentTimeMillis();
             onFinished(state, result, error);
+            if ((flags & FLAG_DON_NOT_CLEAR_ON_FINISH) == FLAG_DON_NOT_CLEAR_ON_FINISH) {
+                removeCallbacks();
+                runnableTask.clear();
+                promiseRunnableMap.clear();
+            }
+
             this.manager = null;
         }
     }
@@ -718,6 +755,10 @@ public abstract class Process<Result, Error extends Throwable> {
         return error != null;
     }
 
+    public boolean hasException() {
+        return exception != null;
+    }
+
     public boolean isFailed() {
         return exception != null;
     }
@@ -758,6 +799,14 @@ public abstract class Process<Result, Error extends Throwable> {
             }
         }
         return false;
+    }
+
+    public boolean compromise(PromiseCallback promiseCallback) {
+        Runnable runnable = promiseRunnableMap.remove(promiseCallback);
+        if (runnable == null) {
+            return false;
+        }
+        return compromise(runnable);
     }
 
     public void precipitatePromise(int... moments) {

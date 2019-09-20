@@ -267,8 +267,10 @@ public final class ProcessManager {
 
     private void setPID(String id, Process process) {
         process.setId(id);
-        processQueue.put(id, process);
-        globalProcessQueue.put(id, process);
+        if ((process.getFlags() & Process.FLAG_DETACHED) != Process.FLAG_DETACHED) {
+            processQueue.put(id, process);
+            globalProcessQueue.put(id, process);
+        }
     }
 
     /**
