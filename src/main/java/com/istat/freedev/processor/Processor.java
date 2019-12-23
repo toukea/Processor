@@ -70,8 +70,8 @@ public class Processor {
         return getProcessManager().execute(process, vars);
     }
 
-    public final Process execute(String PID, Process process, Object... vars) {
-        return getProcessManager().execute(process, PID, vars);
+    public final Process execute(String PID, Process process, Object... vars) throws ProcessManager.ProcessException {
+        return getProcessManager().execute(PID, process, vars);
     }
 
     public final int shutDown() {
