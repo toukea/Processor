@@ -274,7 +274,7 @@ public abstract class Process<Result, Error extends Throwable> {
         }
         this.running = false;
         this.processCallbacks.clear();
-        return running;
+        return false;
     }
 
 //    public boolean compromise(int When) {
@@ -347,7 +347,7 @@ public abstract class Process<Result, Error extends Throwable> {
         if (runnable == null) {
             return (T) this;
         }
-        if (!isRunning() && isCompleted()) {
+        if (isCompleted()) {
             for (int time : when) {
                 if (time == STATE_FLAG_FINISHED || state == time) {
                     runnable.run();
@@ -371,7 +371,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 promise.onPromise(getResult());
             }
         };
-        if (!isRunning() && isCompleted()) {
+        if (hasSucceed()) {
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
             runnable.run();
             return (T) this;
@@ -390,7 +390,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 promise.onPromise(getError());
             }
         };
-        if (!isRunning() && isCompleted()) {
+        if (hasError()) {
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
             runnable.run();
             return (T) this;
@@ -409,7 +409,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 promise.onPromise(getFailCause());
             }
         };
-        if (!isRunning() && isCompleted()) {
+        if (hasException()) {
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
             runnable.run();
             return (T) this;
@@ -432,7 +432,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 promise.onPromise(error);
             }
         };
-        if (!isRunning() && isCompleted()) {
+        if (hasError() || hasException()) {
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
             runnable.run();
             return (T) this;
@@ -450,7 +450,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 promise.onPromise(null);
             }
         };
-        if (!isRunning() && isCompleted()) {
+        if (isCanceled()) {
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
             runnable.run();
             return (T) this;
@@ -469,7 +469,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 promise.onPromise(Process.this);
             }
         };
-        if (!isRunning() && isCompleted()) {
+        if (isCompleted()) {
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
             runnable.run();
             return (T) this;
@@ -656,17 +656,18 @@ public abstract class Process<Result, Error extends Throwable> {
         dispatchState(state, false);
     }
 
+    //TODO il serait telement cool de pouvoir fair transiter un PayLoad ici.
     protected final void dispatchState(final int state, final boolean finished) {
         if (!geopardise) {
             this.state = state;
             post(new Runnable() {
                 @Override
                 public void run() {
-                    if (finished) {
-                        notifyFinished(state);
-                    }
                     if (getManager() != null) {
                         getManager().notifyProcessStateChanged(Process.this);
+                    }
+                    if (finished) {
+                        notifyFinished(state);
                     }
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(state);
                     executePromises(runnableList);
@@ -804,7 +805,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     public boolean hasSucceed() {
-        return !hasError() && !isFailed() && !isCanceled();
+        return isCompleted() && !hasError() && !isFailed() && !isCanceled();
     }
 
     public void attach(ProcessCallback<Result, Error> callback) {
