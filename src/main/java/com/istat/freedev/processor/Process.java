@@ -104,7 +104,7 @@ public abstract class Process<Result, Error extends Throwable> {
 //            memoryRunnableTask.putAll(runnableTask);
             notifyStarted();
             onExecute(getExecutionVariables());
-            dispatchState(STATE_PROCESSING, false);
+            notifyStateChanged(STATE_PROCESSING, false);
         } catch (Exception e) {
             notifyStarted();
             notifyFailed(e);
@@ -478,7 +478,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
-    public <T extends Process<Result, Error>, Y extends Throwable> T then(final Process<Result, Y> promise) {
+    public <T extends Process<Result, Error>> T then(final Process<?, ? extends Throwable> promise) {
         return then(new PromiseCallback<Result>() {
             @Override
             public void onPromise(Result data) {
@@ -652,12 +652,12 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-    protected final void dispatchState(int state) {
-        dispatchState(state, false);
+    protected final void notifyStateChanged(int state) {
+        notifyStateChanged(state, false);
     }
 
     //TODO il serait telement cool de pouvoir fair transiter un PayLoad ici.
-    protected final void dispatchState(final int state, final boolean finished) {
+    protected final void notifyStateChanged(final int state, final boolean finished) {
         if (!geopardise) {
             this.state = state;
             post(new Runnable() {
