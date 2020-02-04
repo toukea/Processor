@@ -106,7 +106,6 @@ public abstract class Process<Result, Error extends Throwable> {
             onExecute(getExecutionVariables());
             notifyStateChanged(STATE_PROCESSING, false);
         } catch (Exception e) {
-            notifyStarted();
             notifyFailed(e);
         }
     }
