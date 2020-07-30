@@ -104,7 +104,9 @@ public abstract class Process<Result, Error extends Throwable> {
 //            memoryRunnableTask.putAll(runnableTask);
             notifyStarted();
             onExecute(getExecutionVariables());
-            notifyStateChanged(STATE_PROCESSING, false);
+            if (running) {
+                notifyStateChanged(STATE_PROCESSING, false);
+            }
         } catch (Exception e) {
             notifyFailed(e);
         }
@@ -142,6 +144,10 @@ public abstract class Process<Result, Error extends Throwable> {
 
     public boolean isCompleted() {
         return !running && !canceled && (result != null || exception != null || error != null);
+    }
+
+    public boolean isFinish() {
+        return !running && (result != null || exception != null || error != null);
     }
 
     public boolean isPaused() {
@@ -468,7 +474,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 promise.onPromise(Process.this);
             }
         };
-        if (isCompleted()) {
+        if (isFinish()) {
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
             runnable.run();
             return (T) this;
@@ -477,7 +483,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
-    public <T extends Process<Result, Error>> T then(final Process<?, ? extends Throwable> promise) {
+    public <T extends Process<Result, Error>> T chain(final Process<?, ? extends Throwable> promise) {
         return then(new PromiseCallback<Result>() {
             @Override
             public void onPromise(Result data) {
