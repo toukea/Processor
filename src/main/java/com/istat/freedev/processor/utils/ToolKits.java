@@ -1,6 +1,6 @@
 package com.istat.freedev.processor.utils;
 
-public class Toolkits {
+public class ToolKits {
 
     public static final boolean isEmpty(String string) {
         return string == null || string.equals("");

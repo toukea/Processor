@@ -2,7 +2,7 @@ package com.istat.freedev.processor;
 
 import com.istat.freedev.processor.interfaces.ProcessCallback;
 import com.istat.freedev.processor.utils.ProcessTools;
-import com.istat.freedev.processor.utils.Toolkits;
+import com.istat.freedev.processor.utils.ToolKits;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -169,7 +169,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return exception;
     }
 
-    public <T> T getErrortAs(Class<T> cLass) {
+    public <T> T getErrorAs(Class<T> cLass) {
         if (error != null) {
             if (cLass.isAssignableFrom(error.getClass())) {
                 return (T) error;
@@ -323,7 +323,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     boolean hasId() {
-        return !Toolkits.isEmpty(getId());
+        return !ToolKits.isEmpty(getId());
     }
 
 
@@ -332,16 +332,19 @@ public abstract class Process<Result, Error extends Throwable> {
     final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>> runnableTask = new ConcurrentHashMap();
 
     public <T extends Process> T promise(final PromiseCallback<Process> callback, int... when) {
-        Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                if (callback != null) {
-                    callback.onPromise(Process.this);
+        if (callback != null) {
+            Runnable runnable = new Runnable() {
+                @Override
+                public void run() {
+                    if (callback != null) {
+                        callback.onPromise(Process.this);
+                    }
                 }
-            }
-        };
-        promiseRunnableMap.put(callback, runnable);
-        return promise(runnable, when);
+            };
+            promiseRunnableMap.put(callback, runnable);
+            return promise(runnable, when);
+        }
+        return (T) this;
     }
 
     private void removeAttachedPromise(Runnable runnable) {
@@ -404,7 +407,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
-    public <T extends Process<Result, Error>> T failed(final PromiseCallback<Throwable> promise) {
+    public <T extends Process<Result, Error>> T failure(final PromiseCallback<Throwable> promise) {
         if (promise == null) {
             return (T) this;
         }
@@ -635,6 +638,10 @@ public abstract class Process<Result, Error extends Throwable> {
 
             this.manager = null;
         }
+    }
+
+    protected final void notifySucceed() {
+        notifySucceed(null);
     }
 
     protected final void notifySucceed(final Result result) {
@@ -1027,7 +1034,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return true;
     }
 
-    protected boolean postDelayed(Runnable runnable, int delay) {
+    protected boolean postDelayed(Runnable runnable, long delay) {
         if (getManager() == null) {
             return false;
         }

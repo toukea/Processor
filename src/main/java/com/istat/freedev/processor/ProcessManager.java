@@ -6,7 +6,7 @@ import android.text.TextUtils;
 
 import com.istat.freedev.processor.interfaces.ProcessListener;
 import com.istat.freedev.processor.interfaces.RunnableDispatcher;
-import com.istat.freedev.processor.utils.Toolkits;
+import com.istat.freedev.processor.utils.ToolKits;
 
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -37,7 +37,7 @@ public final class ProcessManager {
      */
     public synchronized final <T extends Process> T execute(T process, Object... vars) {
         String id = process.getId();
-        if (Toolkits.isEmpty(id)) {
+        if (ToolKits.isEmpty(id)) {
             id = System.currentTimeMillis() + "";
             while (isRunningPID(id)) {
                 id = generateProcessId();
@@ -381,7 +381,7 @@ public final class ProcessManager {
         return true;
     }
 
-    public final boolean postDelayed(Runnable runnable, int delayed) {
+    public final boolean postDelayed(Runnable runnable, long delayed) {
         if (mDispatcher == null) {
             return false;
         }
@@ -395,7 +395,7 @@ public final class ProcessManager {
                 Handler handler = new Handler(Looper.getMainLooper());
 
                 @Override
-                public void dispatch(Runnable runnable, int delay) {
+                public void dispatch(Runnable runnable, long delay) {
                     if (runnable != null) {
                         if (delay <= 0) {
                             handler.post(runnable);
@@ -418,7 +418,7 @@ public final class ProcessManager {
         } else {
             return new RunnableDispatcher() {
                 @Override
-                public void dispatch(Runnable runnable, int delay) {
+                public void dispatch(Runnable runnable, long delay) {
                     if (runnable != null) {
                         runnable.run();
                     }
