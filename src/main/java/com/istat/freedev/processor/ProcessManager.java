@@ -1,7 +1,5 @@
 package com.istat.freedev.processor;
 
-import android.os.Handler;
-import android.os.Looper;
 import android.text.TextUtils;
 
 import com.istat.freedev.processor.interfaces.ProcessListener;
@@ -35,7 +33,7 @@ public final class ProcessManager {
      * @param vars
      * @return
      */
-    public synchronized final <T extends Process> T execute(T process, Object... vars) {
+    public synchronized final <T extends Process> T execute(final T process, Object... vars) {
         String id = process.getId();
         if (ToolKits.isEmpty(id)) {
             id = System.currentTimeMillis() + "";
@@ -45,7 +43,12 @@ public final class ProcessManager {
             process.setId(id);
         }
         setPID(id, process);
-        //TODO can i add component which can be executed here, befor process is executed?
+        post(new Runnable() {
+            @Override
+            public void run() {
+                notifyProcessEnqueued(process);
+            }
+        });
         process.execute(this, vars);
         return process;
     }
@@ -126,7 +129,7 @@ public final class ProcessManager {
 
     ProcessManager(String nameSpace, RunnableDispatcher dispatcher) {
         this.nameSpace = nameSpace;
-        this.mDispatcher = dispatcher != null ? dispatcher : getDefaultRunnableDispatcher();
+        this.mDispatcher = dispatcher != null ? dispatcher : RunnableDispatcher.DEFAULT;
     }
 
     public String getNameSpace() {
@@ -318,6 +321,13 @@ public final class ProcessManager {
         return id;
     }
 
+    void notifyProcessEnqueued(final Process process/*, Object[] vars*/) {
+        for (ProcessListener listener : processListeners) {
+            listener.onProcessStateChanged(process, process.getId(), process.getState());
+            listener.onProcessEnqueued(process, process.getId());
+        }
+    }
+
     void notifyProcessStarted(final Process process/*, Object[] vars*/) {
         for (ProcessListener listener : processListeners) {
             listener.onProcessStateChanged(process, process.getId(), process.getState());
@@ -387,54 +397,6 @@ public final class ProcessManager {
         }
         mDispatcher.dispatch(runnable, delayed);
         return false;
-    }
-
-    public final static RunnableDispatcher getDefaultRunnableDispatcher() {
-        if (isAndroidOs()) {
-            return new RunnableDispatcher() {
-                Handler handler = new Handler(Looper.getMainLooper());
-
-                @Override
-                public void dispatch(Runnable runnable, long delay) {
-                    if (runnable != null) {
-                        if (delay <= 0) {
-                            handler.post(runnable);
-                        } else {
-                            handler.postDelayed(runnable, delay);
-                        }
-                    }
-                }
-
-                @Override
-                public void cancel(Runnable runnable) {
-                    handler.removeCallbacks(runnable);
-                }
-
-                @Override
-                public void release() {
-                    handler.removeCallbacksAndMessages(null);
-                }
-            };
-        } else {
-            return new RunnableDispatcher() {
-                @Override
-                public void dispatch(Runnable runnable, long delay) {
-                    if (runnable != null) {
-                        runnable.run();
-                    }
-                }
-
-                @Override
-                public void cancel(Runnable runnable) {
-
-                }
-
-                @Override
-                public void release() {
-
-                }
-            };
-        }
     }
 
     private static boolean isAndroidOs() {

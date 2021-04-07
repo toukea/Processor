@@ -21,7 +21,7 @@ public abstract class Process<Result, Error extends Throwable> {
     public final static int FLAG_NOT_CANCELABLE = 4;
     int flags;
     public final static int
-            STATE_LATENT = -1,
+            STATE_IDLE = -1,
             STATE_STARTED = 7,
             STATE_PROCESSING = 31,
             STATE_SUCCESS = 255,
@@ -40,8 +40,8 @@ public abstract class Process<Result, Error extends Throwable> {
     private long startingTime = -1, finishTime = -1;
     private Object[] executionVariableArray = new Object[0];
     ProcessManager manager;
-    int state = STATE_LATENT;
-    boolean canceled;
+    int state = STATE_IDLE;
+    boolean canceled = false;
     boolean running = false;
 
     public ProcessManager getManager() {
@@ -143,7 +143,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     public boolean isCompleted() {
-        return !running && !canceled && (result != null || exception != null || error != null);
+        return !running && !canceled && (state == STATE_SUCCESS || exception != null || error != null);
     }
 
     public boolean isFinish() {

@@ -52,4 +52,14 @@ public class ProcessTools {
         process.promise(fail, Process.STATE_FAILED);
         process.promise(aborted, Process.STATE_ABORTED);
     }
+
+    public static boolean isAndroidOs() {
+        String osName = System.getProperty("os.name").toLowerCase();
+        if ("linux".equals(osName)) {
+            if (System.getProperty("java.specification.vendor", "linux").toLowerCase().contains("android")) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

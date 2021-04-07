@@ -11,21 +11,25 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Processor {
     public final static String DEFAULT_PROCESSOR_TAG = "com.istat.freedev.processor.DEFAULT";
-    final static ConcurrentHashMap<String, Processor> processorQueue = new ConcurrentHashMap<String, Processor>() {
+    final static ConcurrentHashMap<String, Processor> nameProcessorMap = new ConcurrentHashMap<String, Processor>() {
         {
             put(DEFAULT_PROCESSOR_TAG, new Processor(DEFAULT_PROCESSOR_TAG));
         }
     };
-    final static ProcessManager defaultProcessManager = new ProcessManager();
+
     final ProcessManager processManager;
     String nameSpace;
 
     public final static ProcessManager getDefaultProcessManager() {
-        return defaultProcessManager;
+        return getDefault().getProcessManager();
     }
 
     public final static Processor getDefault() {
-        return processorQueue.get(DEFAULT_PROCESSOR_TAG);
+        Processor processor = nameProcessorMap.get(DEFAULT_PROCESSOR_TAG);
+        if (processor == null) {
+            nameProcessorMap.put(DEFAULT_PROCESSOR_TAG, processor = new Processor(DEFAULT_PROCESSOR_TAG));
+        }
+        return processor;
     }
 
     Processor(String nameSpace) {
@@ -47,20 +51,20 @@ public class Processor {
     }
 
     public final static Processor boot(String processorTag, RunnableDispatcher runnableDispatcher) {
-        if (processorQueue.contains(processorTag)) {
-            Processor processor = processorQueue.get(processorTag);
+        if (nameProcessorMap.contains(processorTag)) {
+            Processor processor = nameProcessorMap.get(processorTag);
             if (processor.getDispatcher() == runnableDispatcher) {
                 return processor;
             }
         }
         Processor processor = new Processor(processorTag, runnableDispatcher);
-        processorQueue.put(processorTag, processor);
+        nameProcessorMap.put(processorTag, processor);
         return processor;
     }
 
     public final static Processor get(String processorTag) {
-        if (processorQueue.contains(processorTag)) {
-            return processorQueue.get(processorTag);
+        if (nameProcessorMap.contains(processorTag)) {
+            return nameProcessorMap.get(processorTag);
         }
         return null;
     }
@@ -77,7 +81,7 @@ public class Processor {
     public final int shutDown() {
         onShutdown();
         int runningProcess = release();
-        processorQueue.remove(this);
+        nameProcessorMap.remove(this);
         return runningProcess;
     }
 
@@ -100,7 +104,7 @@ public class Processor {
     }
 
     public final static int count() {
-        return processorQueue.size();
+        return nameProcessorMap.size();
     }
 
     public final int getProcessCount() {
@@ -109,8 +113,8 @@ public class Processor {
 
     public final static ProcessManager getProcessManager(String processorTag) {
         Processor processor = null;
-        if (processorQueue.contains(processorTag)) {
-            processor = processorQueue.get(processorTag);
+        if (nameProcessorMap.contains(processorTag)) {
+            processor = nameProcessorMap.get(processorTag);
         }
         if (processor != null) {
             return processor.getProcessManager();
@@ -124,25 +128,33 @@ public class Processor {
 
     @Deprecated
     public final static int shutDownAll() {
-        Iterator<String> iterator = processorQueue.keySet().iterator();
+        Iterator<String> iterator = nameProcessorMap.keySet().iterator();
         int count = 0;
+        Processor processor;
         while (iterator.hasNext()) {
             String name = iterator.next();
-            processorQueue.get(name).shutDown();
-            count++;
+            processor = nameProcessorMap.get(name);
+            if (processor != null) {
+                processor.shutDown();
+                count++;
+            }
         }
-        processorQueue.put(DEFAULT_PROCESSOR_TAG, new Processor(DEFAULT_PROCESSOR_TAG));
+        nameProcessorMap.put(DEFAULT_PROCESSOR_TAG, new Processor(DEFAULT_PROCESSOR_TAG));
         return count;
     }
 
     @Deprecated
     public final static int releaseAll() {
-        Iterator<String> iterator = processorQueue.keySet().iterator();
+        Iterator<String> iterator = nameProcessorMap.keySet().iterator();
         int count = 0;
+        Processor processor;
         while (iterator.hasNext()) {
             String name = iterator.next();
-            processorQueue.get(name).release();
-            count++;
+            processor = nameProcessorMap.get(name);
+            if (processor != null) {
+                processor.release();
+                count++;
+            }
         }
         return count;
     }

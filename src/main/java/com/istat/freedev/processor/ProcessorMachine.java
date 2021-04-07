@@ -69,11 +69,16 @@ public class ProcessorMachine {
     public final static int shutDownAll() {
         Iterator<String> iterator = machineRepository.keySet().iterator();
         int count = 0;
+        ProcessorMachine machine;
         while (iterator.hasNext()) {
             String name = iterator.next();
-            machineRepository.get(name).shutDown();
-            count++;
+            machine = machineRepository.get(name);
+            if (machine != null) {
+                machine.shutDown();
+                count++;
+            }
         }
+        machineRepository.clear();
         machineRepository.put(DEFAULT_PROCESSOR_TAG, new ProcessorMachine(DEFAULT_PROCESSOR_TAG));
         return count;
     }
@@ -82,10 +87,14 @@ public class ProcessorMachine {
     public final static int releaseAll() {
         Iterator<String> iterator = machineRepository.keySet().iterator();
         int count = 0;
+        ProcessorMachine machine;
         while (iterator.hasNext()) {
             String name = iterator.next();
-            machineRepository.get(name).release();
-            count++;
+            machine = machineRepository.get(name);
+            if (machine != null) {
+                machine.release();
+                count++;
+            }
         }
         return count;
     }
