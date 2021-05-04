@@ -97,7 +97,7 @@ public abstract class Process<Result, Error extends Throwable> {
 
     final void execute(ProcessManager manager, Object... vars) {
         this.manager = manager;
-        geopardise = false;
+        jeopardise = false;
         try {
             this.executionVariableArray = vars;
             startingTime = System.currentTimeMillis();
@@ -113,7 +113,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     final void reset() {
-        geopardise = false;
+        jeopardise = false;
         executedRunnable.clear();
 //        runnableTask.putAll(memoryRunnableTask);
         try {
@@ -248,7 +248,7 @@ public abstract class Process<Result, Error extends Throwable> {
         onRestart(mode);
         if (isRunning()) {
             if (RESTART_MODE_GEOPARDISE == mode) {
-                geopardise = true;
+                jeopardise = true;
             }
             cancel();
         }
@@ -307,15 +307,15 @@ public abstract class Process<Result, Error extends Throwable> {
         return running;
     }
 
-    boolean geopardise = false;
+    boolean jeopardise = false;
 
     public final boolean hasBeenGeopardise() {
-        return geopardise;
+        return jeopardise;
     }
 
     //TODO bien réfléchir au comportement de cette method
-    public final boolean geopardise() {
-        geopardise = true;
+    public final boolean jeopardise() {
+        jeopardise = true;
         compromise();
         boolean cancelled = cancel();
         return cancelled;
@@ -562,7 +562,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     private void executePromises(ConcurrentLinkedQueue<Runnable> runnableList) {
-        if (!geopardise && runnableList != null && runnableList.size() > 0) {
+        if (!jeopardise && runnableList != null && runnableList.size() > 0) {
             for (Runnable runnable : runnableList) {
                 if (!executedRunnable.contains(runnable)) {
                     runnable.run();
@@ -593,7 +593,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     final void notifyStarted() {
-        if (!geopardise) {
+        if (!jeopardise) {
             Process.this.state = STATE_STARTED;
             this.running = true;
             post(new Runnable() {
@@ -615,7 +615,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     final void notifyFinished(int state) {
-        if (!geopardise) {
+        if (!jeopardise) {
             this.state = state;
             this.running = false;
             if (getManager() != null) {
@@ -645,7 +645,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected final void notifySucceed(final Result result) {
-        if (!geopardise) {
+        if (!jeopardise) {
             this.state = STATE_SUCCESS;
             this.result = result;
             post(new Runnable() {
@@ -670,7 +670,7 @@ public abstract class Process<Result, Error extends Throwable> {
 
     //TODO il serait telement cool de pouvoir fair transiter un PayLoad ici.
     protected final void notifyStateChanged(final int state, final boolean finished) {
-        if (!geopardise) {
+        if (!jeopardise) {
             this.state = state;
             post(new Runnable() {
                 @Override
@@ -694,7 +694,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected final void notifyError(final Error error) {
-        if (!geopardise) {
+        if (!jeopardise) {
             this.state = STATE_ERROR;
             this.error = error;
             post(new Runnable() {
@@ -714,7 +714,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected final void notifyFailed(final Throwable e) {
-        if (!geopardise) {
+        if (!jeopardise) {
             this.state = STATE_FAILED;
             this.exception = e;
             post(new Runnable() {
@@ -734,7 +734,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected final void notifyAborted() {
-        if (!geopardise) {
+        if (!jeopardise) {
             this.state = STATE_ABORTED;
             post(new Runnable() {
                 @Override
