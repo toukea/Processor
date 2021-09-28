@@ -51,9 +51,10 @@ public class Processor {
     }
 
     public final static Processor boot(String processorTag, RunnableDispatcher runnableDispatcher) {
-        if (nameProcessorMap.contains(processorTag)) {
+        if (isUp(processorTag)) {
             Processor processor = nameProcessorMap.get(processorTag);
-            if (processor.getDispatcher() == runnableDispatcher) {
+            if (processor.getDispatcher() == runnableDispatcher ||
+                    (processor.getDispatcher() == RunnableDispatcher.DEFAULT && runnableDispatcher == null)) {
                 return processor;
             }
         }
@@ -63,10 +64,14 @@ public class Processor {
     }
 
     public final static Processor get(String processorTag) {
-        if (nameProcessorMap.contains(processorTag)) {
+        if (nameProcessorMap.containsKey(processorTag)) {
             return nameProcessorMap.get(processorTag);
         }
         return null;
+    }
+
+    public static boolean isUp(String processorTag) {
+        return nameProcessorMap.containsKey(processorTag);
     }
 
 

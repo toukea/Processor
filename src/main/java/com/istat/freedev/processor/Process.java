@@ -142,11 +142,19 @@ public abstract class Process<Result, Error extends Throwable> {
         return running;
     }
 
+    /**
+     *  Called when the process is now finished, include when the process was canceled
+     * @return
+     */
     public boolean isCompleted() {
         return !running && !canceled && (state == STATE_SUCCESS || exception != null || error != null);
     }
 
-    public boolean isFinish() {
+    /**
+     * Called when the process is now finished, but was not canceled
+     * @return
+     */
+    public boolean isFinished() {
         return !running && (result != null || exception != null || error != null);
     }
 
@@ -477,7 +485,7 @@ public abstract class Process<Result, Error extends Throwable> {
                 promise.onPromise(Process.this);
             }
         };
-        if (isFinish()) {
+        if (isFinished()) {
 //            throw new IllegalStateException("Oups, current Process is not running. It has to be running before adding any promise or promise");
             runnable.run();
             return (T) this;
@@ -1040,6 +1048,13 @@ public abstract class Process<Result, Error extends Throwable> {
         }
         getManager().postDelayed(runnable, delay);
         return true;
+    }
+
+    protected void unPost(Runnable runnable){
+        if (getManager() == null) {
+            return;
+        }
+        getManager().unPost(runnable);
     }
 
     public String changeId(String newId) throws ProcessManager.ProcessException {

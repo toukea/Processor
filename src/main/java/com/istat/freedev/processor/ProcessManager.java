@@ -20,8 +20,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 //TODO thing about ProcessManager.Plugin
 //TODO permettre de lancer des Process qui embarque en eux l'execution de plusieurs autre process (avec possibilité de créer des sous ProcessManager dans lequel il tourne ces sous Process)
 public final class ProcessManager {
-    static final ConcurrentHashMap<String, Process> globalProcessQueue = new ConcurrentHashMap<String, Process>();
-    final ConcurrentHashMap<String, Process> processQueue = new ConcurrentHashMap<String, Process>();
+    static final ConcurrentHashMap<String, Process> globalProcessQueue = new ConcurrentHashMap();
+    final ConcurrentHashMap<String, Process> processQueue = new ConcurrentHashMap();
     final ConcurrentLinkedQueue<ProcessListener> processListeners = new ConcurrentLinkedQueue();
     private static final int SIZE_GENERATED_PID = 16;
     private final String nameSpace;
@@ -265,6 +265,8 @@ public final class ProcessManager {
         }
         Process process = processQueue.get(initialPID);
         setPID(updatePID, process);
+        processQueue.remove(initialPID);
+        globalProcessQueue.remove(initialPID);
         return process;
     }
 
@@ -397,6 +399,14 @@ public final class ProcessManager {
         }
         mDispatcher.dispatch(runnable, delayed);
         return false;
+    }
+
+    public final void unPost(Runnable runnable) {
+        if (mDispatcher == null) {
+            return;
+        }
+        mDispatcher.cancel(runnable);
+        return;
     }
 
     private static boolean isAndroidOs() {
