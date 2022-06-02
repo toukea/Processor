@@ -143,7 +143,8 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     /**
-     *  Called when the process is now finished, include when the process was canceled
+     * Called when the process is now finished, include when the process was canceled
+     *
      * @return
      */
     public boolean isCompleted() {
@@ -152,10 +153,16 @@ public abstract class Process<Result, Error extends Throwable> {
 
     /**
      * Called when the process is now finished, but was not canceled
+     *
      * @return
      */
     public boolean isFinished() {
-        return !running && (result != null || exception != null || error != null);
+        return !running && (result != null ||
+                exception != null ||
+                error != null ||
+                state == STATE_SUCCESS ||
+                state == STATE_ERROR ||
+                state == STATE_FAILED);
     }
 
     public boolean isPaused() {
@@ -280,14 +287,18 @@ public abstract class Process<Result, Error extends Throwable> {
         if ((flags & FLAG_NOT_CANCELABLE) == FLAG_NOT_CANCELABLE) {
             return false;
         }
-        if (running) {
-            canceled = true;
-            onCancel();
-            notifyAborted();
+        try {
+            if (running) {
+                canceled = true;
+                onCancel();
+                notifyAborted();
+            }
+            this.running = false;
+            this.processCallbacks.clear();
+            return true;
+        } catch (Exception e) {
+            return false;
         }
-        this.running = false;
-        this.processCallbacks.clear();
-        return false;
     }
 
 //    public boolean compromise(int When) {
@@ -339,13 +350,13 @@ public abstract class Process<Result, Error extends Throwable> {
     //    final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>> memoryRunnableTask = new ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>>();
     final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>> runnableTask = new ConcurrentHashMap();
 
-    public <T extends Process> T promise(final PromiseCallback<Process> callback, int... when) {
+    public <T extends Process> T promise(final PromiseCallback<T> callback, int... when) {
         if (callback != null) {
             Runnable runnable = new Runnable() {
                 @Override
                 public void run() {
                     if (callback != null) {
-                        callback.onPromise(Process.this);
+                        callback.onPromise((T) Process.this);
                     }
                 }
             };
@@ -653,7 +664,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected final void notifySucceed(final Result result) {
-        if (!jeopardise) {
+        if (!jeopardise && !isCanceled()) {
             this.state = STATE_SUCCESS;
             this.result = result;
             post(new Runnable() {
@@ -702,7 +713,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected final void notifyError(final Error error) {
-        if (!jeopardise) {
+        if (!jeopardise && !isCanceled()) {
             this.state = STATE_ERROR;
             this.error = error;
             post(new Runnable() {
@@ -722,7 +733,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected final void notifyFailed(final Throwable e) {
-        if (!jeopardise) {
+        if (!jeopardise && !isCanceled()) {
             this.state = STATE_FAILED;
             this.exception = e;
             post(new Runnable() {
@@ -949,6 +960,22 @@ public abstract class Process<Result, Error extends Throwable> {
             }
         }
 
+        public <T> T getVariable(int index, Class<T> cLass, T defaultValue) throws ArrayIndexOutOfBoundsException {
+            if (executionVariableArray.length <= index) {
+                throw new ArrayIndexOutOfBoundsException("executionVariables length=" + executionVariableArray.length + ", requested index=" + index
+                );
+            }
+            Object var = executionVariableArray[index];
+            if (var == null) {
+                return defaultValue;
+            }
+            if (cLass.isAssignableFrom(var.getClass())) {
+                return (T) var;
+            } else {
+                return defaultValue;
+            }
+        }
+
         public String getStringVariable(int index) throws ArrayIndexOutOfBoundsException {
             if (executionVariableArray.length <= index) {
                 throw new ArrayIndexOutOfBoundsException("executionVariables length=" + executionVariableArray.length + ", requested index=" + index
@@ -1050,7 +1077,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return true;
     }
 
-    protected void unPost(Runnable runnable){
+    protected void unPost(Runnable runnable) {
         if (getManager() == null) {
             return;
         }
@@ -1069,7 +1096,7 @@ public abstract class Process<Result, Error extends Throwable> {
      * @param state
      * @return state is included into current #Process.state
      */
-    public boolean isStateAsignableTo(int state) {
+    public boolean isStateAssignableTo(int state) {
         int bitAnd = state & this.state;
         return state == bitAnd;
     }
