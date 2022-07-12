@@ -33,24 +33,28 @@ public final class ProcessManager {
      * @param vars
      * @return
      */
-    public synchronized final <T extends Process> T execute(final T process, Object... vars) {
+    public <T extends Process> T execute(final T process, Object... vars) {
         String id = process.getId();
-        if (ToolKits.isEmpty(id)) {
-            id = System.currentTimeMillis() + "";
-            while (isRunningPID(id)) {
-                id = generateProcessId();
+        synchronized (this) {
+            if (ToolKits.isEmpty(id)) {
+                id = System.currentTimeMillis() + "";
+                while (isRunningPID(id)) {
+                    id = generateProcessId();
+                }
+                process.setId(id);
             }
-            process.setId(id);
+            setPID(id, process);
         }
-        setPID(id, process);
-        post(new Runnable() {
-            @Override
-            public void run() {
-                notifyProcessEnqueued(process);
-            }
-        });
-        process.execute(this, vars);
-        return process;
+        synchronized (id) {
+            post(new Runnable() {
+                @Override
+                public void run() {
+                    notifyProcessEnqueued(process);
+                }
+            });
+            process.execute(this, vars);
+            return process;
+        }
     }
 
     /**

@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public abstract class Process<Result, Error extends Throwable> {
     public final static int FLAG_DETACHED = 1;
-    public final static int FLAG_DON_NOT_CLEAR_ON_FINISH = 2;
+    public final static int FLAG_DONT_CLEAR_ON_FINISH = 2;
     public final static int FLAG_NOT_CANCELABLE = 4;
     int flags;
     public final static int
@@ -157,12 +157,14 @@ public abstract class Process<Result, Error extends Throwable> {
      * @return
      */
     public boolean isFinished() {
-        return !running && (result != null ||
-                exception != null ||
-                error != null ||
-                state == STATE_SUCCESS ||
-                state == STATE_ERROR ||
-                state == STATE_FAILED);
+        return !running &&
+                (result != null ||
+                        exception != null ||
+                        error != null ||
+                        state == STATE_SUCCESS ||
+                        state == STATE_ERROR ||
+                        state == STATE_FAILED||
+                        (state != STATE_PROCESSING && ((state & STATE_PROCESSING) == STATE_PROCESSING)));
     }
 
     public boolean isPaused() {
@@ -328,7 +330,7 @@ public abstract class Process<Result, Error extends Throwable> {
 
     boolean jeopardise = false;
 
-    public final boolean hasBeenGeopardise() {
+    public final boolean hasBeenJeopardise() {
         return jeopardise;
     }
 
@@ -649,12 +651,11 @@ public abstract class Process<Result, Error extends Throwable> {
             onStateChanged(state);
             this.finishTime = System.currentTimeMillis();
             onFinished(state, result, error);
-            if ((flags & FLAG_DON_NOT_CLEAR_ON_FINISH) == FLAG_DON_NOT_CLEAR_ON_FINISH) {
+            if ((flags & FLAG_DONT_CLEAR_ON_FINISH) == FLAG_DONT_CLEAR_ON_FINISH) {
                 removeCallbacks();
                 runnableTask.clear();
                 promiseRunnableMap.clear();
             }
-
             this.manager = null;
         }
     }
