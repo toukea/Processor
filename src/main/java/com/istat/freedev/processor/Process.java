@@ -157,14 +157,12 @@ public abstract class Process<Result, Error extends Throwable> {
      * @return
      */
     public boolean isFinished() {
-        return !running &&
-                (result != null ||
-                        exception != null ||
-                        error != null ||
-                        state == STATE_SUCCESS ||
-                        state == STATE_ERROR ||
-                        state == STATE_FAILED||
-                        (state != STATE_PROCESSING && ((state & STATE_PROCESSING) == STATE_PROCESSING)));
+        return !running && (result != null ||
+                exception != null ||
+                error != null ||
+                state == STATE_SUCCESS ||
+                state == STATE_ERROR ||
+                state == STATE_FAILED);
     }
 
     public boolean isPaused() {
