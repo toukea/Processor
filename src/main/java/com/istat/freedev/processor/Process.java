@@ -383,7 +383,7 @@ public abstract class Process<Result, Error extends Throwable> {
             return (T) this;
         }
         for (int value : when) {
-            addFuture(runnable, value);
+            addPromise(runnable, value);
         }
         return (T) this;
     }
@@ -403,7 +403,7 @@ public abstract class Process<Result, Error extends Throwable> {
             runnable.run();
             return (T) this;
         }
-        addFuture(runnable, STATE_SUCCESS);
+        addPromise(runnable, STATE_SUCCESS);
         return (T) this;
     }
 
@@ -422,7 +422,7 @@ public abstract class Process<Result, Error extends Throwable> {
             runnable.run();
             return (T) this;
         }
-        addFuture(runnable, STATE_ERROR);
+        addPromise(runnable, STATE_ERROR);
         return (T) this;
     }
 
@@ -441,7 +441,7 @@ public abstract class Process<Result, Error extends Throwable> {
             runnable.run();
             return (T) this;
         }
-        addFuture(runnable, STATE_FAILED);
+        addPromise(runnable, STATE_FAILED);
         return (T) this;
     }
 
@@ -464,8 +464,8 @@ public abstract class Process<Result, Error extends Throwable> {
             runnable.run();
             return (T) this;
         }
-        addFuture(runnable, STATE_FAILED);
-        addFuture(runnable, STATE_ERROR);
+        addPromise(runnable, STATE_FAILED);
+        addPromise(runnable, STATE_ERROR);
 //        addFuture(runnable, STATE_ABORTED);
         return (T) this;
     }
@@ -482,7 +482,7 @@ public abstract class Process<Result, Error extends Throwable> {
             runnable.run();
             return (T) this;
         }
-        addFuture(runnable, STATE_ABORTED);
+        addPromise(runnable, STATE_ABORTED);
         return (T) this;
     }
 
@@ -501,7 +501,7 @@ public abstract class Process<Result, Error extends Throwable> {
             runnable.run();
             return (T) this;
         }
-        addFuture(runnable, STATE_FLAG_FINISHED);
+        addPromise(runnable, STATE_FLAG_FINISHED);
         return (T) this;
     }
 
@@ -529,7 +529,7 @@ public abstract class Process<Result, Error extends Throwable> {
 
     public <T extends Process<Result, Error>> T sendMessage(final MessageCarrier carrier, final Object[] messages, int... when) {
         for (int value : when) {
-            addFuture(new Runnable() {
+            addPromise(new Runnable() {
                 @Override
                 public void run() {
                     carrier.process = Process.this;
@@ -540,8 +540,9 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
-    private void addFuture(Runnable runnable, int conditionTime) {
-        if (!isFutureContain(runnable, conditionTime)) {
+    private void addPromise(Runnable runnable, int conditionTime) {
+//        synchronized (this) {
+        if (!isPromiseContains(runnable, conditionTime)) {
             ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(conditionTime);
             if (runnableList == null) {
                 runnableList = new ConcurrentLinkedQueue();
@@ -549,9 +550,10 @@ public abstract class Process<Result, Error extends Throwable> {
             runnableList.add(runnable);
             runnableTask.put(conditionTime, runnableList);
         }
+//        }
     }
 
-    private boolean isFutureContain(Runnable run, int conditionTime) {
+    private boolean isPromiseContains(Runnable run, int conditionTime) {
         ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(conditionTime);
         if (runnableList == null || runnableList.isEmpty()) {
             return false;
@@ -663,9 +665,10 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected final void notifySucceed(final Result result) {
-        if (!jeopardise && !isCanceled()) {
+        if (!jeopardise && running) {
             this.state = STATE_SUCCESS;
             this.result = result;
+            this.running = false;
             post(new Runnable() {
                 @Override
                 public void run() {
@@ -688,8 +691,11 @@ public abstract class Process<Result, Error extends Throwable> {
 
     //TODO il serait telement cool de pouvoir fair transiter un PayLoad ici.
     protected final void notifyStateChanged(final int state, final boolean finished) {
-        if (!jeopardise) {
+        if (!jeopardise && running) {
             this.state = state;
+            if (finished) {
+                this.running = false;
+            }
             post(new Runnable() {
                 @Override
                 public void run() {
@@ -712,9 +718,10 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected final void notifyError(final Error error) {
-        if (!jeopardise && !isCanceled()) {
+        if (!jeopardise && running) {
             this.state = STATE_ERROR;
             this.error = error;
+            this.running = false;
             post(new Runnable() {
                 @Override
                 public void run() {
@@ -732,9 +739,10 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected final void notifyFailed(final Throwable e) {
-        if (!jeopardise && !isCanceled()) {
+        if (!jeopardise && running) {
             this.state = STATE_FAILED;
             this.exception = e;
+            this.running = false;
             post(new Runnable() {
                 @Override
                 public void run() {
@@ -752,8 +760,9 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected final void notifyAborted() {
-        if (!jeopardise) {
+        if (!jeopardise && running) {
             this.state = STATE_ABORTED;
+            this.running = false;
             post(new Runnable() {
                 @Override
                 public void run() {
