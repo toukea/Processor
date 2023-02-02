@@ -6,12 +6,11 @@ ext {
 }
 apply from: 'release-jar.gradle'
 android {
-    compileSdkVersion 26
-    buildToolsVersion '27.0.3'
+    compileSdkVersion 32
 
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion 26
+        targetSdkVersion 31
 //        versionCode 1
 //        versionName "1.0"
 
@@ -36,9 +35,9 @@ task makeJar(type: Copy) {
     rename('classes.jar', 'processor.jar')
 }
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    api fileTree(dir: 'libs', include: ['*.jar'])
     androidTestImplementation('androidx.test.espresso:espresso-core:3.1.0', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    testImplementation 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.13.2'
 }

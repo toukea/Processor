@@ -7,12 +7,12 @@ import com.istat.freedev.processor.Process;
  */
 
 public interface ProcessListener {
-    void onProcessEnqueued(Process process, String id);
+    default void onProcessEnqueued(Process process, String id){}
 
-    void onProcessStarted(Process process, String id);
+    default void onProcessStarted(Process process, String id) {}
 
-    void onProcessStateChanged(Process process, String id, int state);
+    default void onProcessStateChanged(Process process, String id, int state) {}
 
-    void onProcessFinished(Process process, String id);
+    default void onProcessFinished(Process process, String id){}
 
 }

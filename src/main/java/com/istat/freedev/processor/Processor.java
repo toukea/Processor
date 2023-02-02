@@ -63,6 +63,14 @@ public class Processor {
         return processor;
     }
 
+    public static Processor getOrBoot(String processorTag) {
+        Processor processor = get(processorTag);
+        if (processor != null) {
+            return processor;
+        }
+        return boot(processorTag);
+    }
+
     public final static Processor get(String processorTag) {
         if (nameProcessorMap.containsKey(processorTag)) {
             return nameProcessorMap.get(processorTag);

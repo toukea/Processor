@@ -665,7 +665,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected final void notifySucceed(final Result result) {
-        if (!jeopardise && running) {
+        if (!jeopardise && running && !canceled) {
             this.state = STATE_SUCCESS;
             this.result = result;
             this.running = false;
@@ -718,7 +718,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected final void notifyError(final Error error) {
-        if (!jeopardise && running) {
+        if (!jeopardise && running && !canceled) {
             this.state = STATE_ERROR;
             this.error = error;
             this.running = false;
@@ -739,7 +739,7 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected final void notifyFailed(final Throwable e) {
-        if (!jeopardise && running) {
+        if (!jeopardise && running && !canceled) {
             this.state = STATE_FAILED;
             this.exception = e;
             this.running = false;
@@ -945,6 +945,17 @@ public abstract class Process<Result, Error extends Throwable> {
                 e.printStackTrace();
                 return null;
             }
+        }
+
+        public boolean isVariableDefined(int index) {
+            return executionVariableArray.length > index;
+        }
+
+        public boolean isVariableNotNull(int index) {
+            if (executionVariableArray.length > index) {
+                return executionVariableArray[index] != null;
+            }
+            return false;
         }
 
         public boolean isVarInstanceOf(int index, Class<?> cLass) {
