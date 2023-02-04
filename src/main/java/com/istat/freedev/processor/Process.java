@@ -124,6 +124,10 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
+    protected void onStarted(){
+
+    }
+
     protected abstract void onExecute(ExecutionVariables executionVariables) throws Exception;
 
     protected void onResume() {
@@ -629,6 +633,7 @@ public abstract class Process<Result, Error extends Throwable> {
                     ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(STATE_STARTED);
                     executePromises(runnableList);
                     onStateChanged(state);
+                    onStarted();
                 }
             });
 

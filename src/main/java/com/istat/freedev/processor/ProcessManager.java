@@ -26,6 +26,14 @@ public final class ProcessManager {
     private static final int SIZE_GENERATED_PID = 16;
     private final String nameSpace;
 
+    public <T extends Process> T execute(final T process, Object[] vars, String PID) throws ProcessException {
+        if (isRunningPID(PID)) {
+            throw new ProcessException("Sorry, a running process with same PID already running");
+        }
+        process.setId(PID);
+        return execute(process, vars);
+    }
+
     /**
      * Execute process with specific execution variables
      *
