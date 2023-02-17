@@ -54,12 +54,7 @@ public final class ProcessManager {
             setPID(id, process);
         }
         synchronized (id) {
-            post(new Runnable() {
-                @Override
-                public void run() {
-                    notifyProcessEnqueued(process);
-                }
-            });
+            post(() -> notifyProcessEnqueued(process));
             process.execute(this, vars);
             return process;
         }

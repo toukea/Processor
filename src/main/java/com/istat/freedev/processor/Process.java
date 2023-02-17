@@ -124,7 +124,7 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
-    protected void onStarted(){
+    protected void onStarted() {
 
     }
 
@@ -140,6 +140,10 @@ public abstract class Process<Result, Error extends Throwable> {
     }
 
     protected void onCancel() {
+    }
+
+    protected void onHotSwapping(ExecutionVariables executionVariables) {
+
     }
 
     public boolean isRunning() {
@@ -254,6 +258,11 @@ public abstract class Process<Result, Error extends Throwable> {
 
     public final void resume() {
         onResume();
+    }
+
+    public void doHotSwapping(Object... payload) {
+        executionVariableArray = payload;
+        onHotSwapping(getExecutionVariables());
     }
 
     public final void restart() {
@@ -579,7 +588,7 @@ public abstract class Process<Result, Error extends Throwable> {
         return finishTime;
     }
 
-    public final long getLinvingTime() {
+    public final long getLivingTime() {
         if (startingTime < 0) {
             return 0;
         }
