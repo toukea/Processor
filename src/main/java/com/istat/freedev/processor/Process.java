@@ -363,6 +363,15 @@ public abstract class Process<Result, Error extends Throwable> {
     //    final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>> memoryRunnableTask = new ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>>();
     final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Runnable>> runnableTask = new ConcurrentHashMap();
 
+
+    public <T extends Process<Result, Error>> T promise(final PromiseCallback<T> callback, int[] when, long timeout) {
+        T process = promise(callback, when);
+        postDelayed(() -> {
+            compromise(callback);
+        }, timeout);
+        return process;
+    }
+
     public <T extends Process> T promise(final PromiseCallback<T> callback, int... when) {
         if (callback != null) {
             Runnable runnable = new Runnable() {
@@ -401,6 +410,14 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
+    public <T extends Process<Result, Error>> T then(final PromiseCallback<Result> promise, long timeout) {
+        T process = then(promise);
+        postDelayed(() -> {
+            compromise(promise);
+        }, timeout);
+        return process;
+    }
+
     public <T extends Process<Result, Error>> T then(final PromiseCallback<Result> promise) {
         if (promise == null) {
             return (T) this;
@@ -420,6 +437,14 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
+    public <T extends Process<Result, Error>> T error(final PromiseCallback<Error> promise, long timeout) {
+        T process = error(promise);
+        postDelayed(() -> {
+            compromise(promise);
+        }, timeout);
+        return process;
+    }
+
     public <T extends Process> T error(final PromiseCallback<Error> promise) {
         if (promise == null) {
             return (T) this;
@@ -437,6 +462,14 @@ public abstract class Process<Result, Error extends Throwable> {
         }
         addPromise(runnable, STATE_ERROR);
         return (T) this;
+    }
+
+    public <T extends Process<Result, Error>> T failure(final PromiseCallback<Throwable> promise, long timeout) {
+        T process = failure(promise);
+        postDelayed(() -> {
+            compromise(promise);
+        }, timeout);
+        return process;
     }
 
     public <T extends Process<Result, Error>> T failure(final PromiseCallback<Throwable> promise) {
@@ -483,6 +516,14 @@ public abstract class Process<Result, Error extends Throwable> {
         return (T) this;
     }
 
+    public <T extends Process<Result, Error>> T abortion(final PromiseCallback<Void> promise, long timeout) {
+        T process = abortion(promise);
+        postDelayed(() -> {
+            compromise(promise);
+        }, timeout);
+        return process;
+    }
+
     public <T extends Process<Result, Error>> T abortion(final PromiseCallback<Void> promise) {
         Runnable runnable = new Runnable() {
             @Override
@@ -497,6 +538,15 @@ public abstract class Process<Result, Error extends Throwable> {
         }
         addPromise(runnable, STATE_ABORTED);
         return (T) this;
+    }
+
+
+    public <T extends Process<Result, Error>> T finish(final PromiseCallback<Process> promise, long timeout) {
+        T process = finish(promise);
+        postDelayed(() -> {
+            compromise(promise);
+        }, timeout);
+        return process;
     }
 
     public <T extends Process<Result, Error>> T finish(final PromiseCallback<Process> promise) {
@@ -879,20 +929,23 @@ public abstract class Process<Result, Error extends Throwable> {
         return removed;
     }
 
-    public boolean compromise(Runnable runnable) {
-        Iterator<Integer> iterator = runnableTask.keySet().iterator();
-        while (iterator.hasNext()) {
-            Integer when = iterator.next();
-            ConcurrentLinkedQueue<Runnable> runnables = runnableTask.get(when);
-            if (runnables != null) {
-                boolean removed = runnables.contains(runnable);
-                if (removed) {
-                    runnables.remove(runnable);
-                    return true;
+    public int compromise(Runnable runnable) {
+        return compromise(runnable, null);
+    }
+
+    public int compromise(Runnable runnable, Integer maxToRemove) {
+        Iterator<Integer> whenIterator = runnableTask.keySet().iterator();
+        int compromised = 0;
+        while (whenIterator.hasNext()) {
+            Integer when = whenIterator.next();
+            ConcurrentLinkedQueue<Runnable> runnableList = runnableTask.get(when);
+            if (runnableList != null) {
+                if (runnableList.remove(runnable)) {
+                    compromised++;
                 }
             }
         }
-        return false;
+        return compromised;
     }
 
     public boolean compromise(PromiseCallback promiseCallback) {
@@ -900,7 +953,7 @@ public abstract class Process<Result, Error extends Throwable> {
         if (runnable == null) {
             return false;
         }
-        return compromise(runnable);
+        return compromise(runnable) > 0;
     }
 
     public void precipitatePromise(int... moments) {
