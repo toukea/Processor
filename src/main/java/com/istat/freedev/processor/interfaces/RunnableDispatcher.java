@@ -35,7 +35,7 @@ public interface RunnableDispatcher {
     };
 
     RunnableDispatcher ANDROID_HANDLER_RUNNER = new RunnableDispatcher() {
-        Handler handler = new Handler(Looper.getMainLooper());
+        Handler handler = ProcessTools.isAndroidOs()? new Handler(Looper.getMainLooper()) : new Handler();
 
         @Override
         public void dispatch(Runnable runnable, long delay) {

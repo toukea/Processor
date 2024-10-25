@@ -212,6 +212,29 @@ public abstract class Process<Result, Error extends Throwable> {
         }
     }
 
+    public Result getResult(boolean allowAwaitResult) throws Throwable {
+        return getResult(allowAwaitResult, allowAwaitResult, null);
+    }
+
+    public Result getResult(boolean allowAwaitResult, boolean throwException) throws Throwable {
+        return getResult(allowAwaitResult, throwException, null);
+    }
+
+    public Result getResult(boolean allowAwaitResult, boolean throwException, Long runningVerificationInterval) throws Throwable {
+        if (runningVerificationInterval == null) {
+            runningVerificationInterval = 500L;
+        }
+        if (allowAwaitResult) {
+            while (isRunning()) {
+                Thread.sleep(runningVerificationInterval);
+            }
+        }
+        if (throwException && exception != null) {
+            throw exception;
+        }
+        return getResult();
+    }
+
     public Result getResult() {
         return result;
     }
@@ -1079,14 +1102,13 @@ public abstract class Process<Result, Error extends Throwable> {
 
         public boolean getBooleanVariable(int index) {
             if (executionVariableArray.length <= index) {
-                throw new ArrayIndexOutOfBoundsException("executionVariables length=" + executionVariableArray.length + ", requested index=" + index
-                );
+                throw new ArrayIndexOutOfBoundsException("executionVariables length=" + executionVariableArray.length + ", requested index=" + index);
             }
             Object var = executionVariableArray[index];
             if (var == null) {
                 return false;
             }
-            return Boolean.valueOf(String.valueOf(String.valueOf(var)));
+            return Boolean.parseBoolean(String.valueOf(var));
         }
     }
 

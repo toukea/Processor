@@ -6,6 +6,7 @@ ext {
 }
 apply from: 'release-jar.gradle'
 android {
+    namespace 'com.istat.freedev.processor'
     compileSdkVersion 32
 
     defaultConfig {

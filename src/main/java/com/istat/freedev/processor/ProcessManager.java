@@ -67,14 +67,39 @@ public final class ProcessManager {
      */
     public List<Process> getRunningProcess() {
         Iterator<String> iterator = processQueue.keySet().iterator();
-        List<Process> list = new ArrayList<Process>();
+        List<Process> list = new ArrayList<>();
         while (iterator.hasNext()) {
             String id = iterator.next();
-            Process process = getProcessById(id);
-            if (process.isRunning()) {
-                list.add(process);
-            } else {
-                processQueue.remove(process);
+            Process<?, ?> process = getProcessById(id);
+            if (process != null) {
+                if (process.isRunning()) {
+                    list.add(process);
+                } else {
+                    processQueue.remove(process);
+                }
+            }
+        }
+        return list;
+    }
+
+    public <T extends Process<?, ?>> List<T> getRunningProcess(Class<T> filterClass) {
+        return getRunningProcess(filterClass, false);
+    }
+
+    public <T extends Process<?, ?>> List<T> getRunningProcess(Class<T> filterClass, boolean acceptAssignableClass) {
+        Iterator<String> iterator = processQueue.keySet().iterator();
+        List<T> list = new ArrayList<T>();
+        while (iterator.hasNext()) {
+            String id = iterator.next();
+            Process<?, ?> process = getProcessById(id);
+            if (process != null) {
+                if (process.isRunning()) {
+                    if (filterClass == null || filterClass == process.getClass() || (acceptAssignableClass && filterClass.isAssignableFrom(process.getClass()))) {
+                        list.add((T) process);
+                    }
+                } else {
+                    processQueue.remove(process);
+                }
             }
         }
         return list;
@@ -162,7 +187,7 @@ public final class ProcessManager {
     }
 
     public <T extends Process<?, ?>> T getProcessById(String PID, Class<T> cLass) {
-        Process p = getProcessById(PID);
+        Process<?,?> p = getProcessById(PID);
         if (p != null && cLass == p.getClass()) {
             return (T) p;
         }
